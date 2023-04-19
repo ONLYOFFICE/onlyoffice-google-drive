@@ -1,0 +1,8 @@
+# Dependencies
+node_modules
+
+# Configuration files
+config.yml
+
+# System files
+.DS_Store

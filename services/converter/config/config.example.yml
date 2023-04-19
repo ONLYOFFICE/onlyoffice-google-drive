@@ -1,0 +1,46 @@
+namespace: "gdrive"
+name: "converter"
+version: 0
+address: ":4360"
+repl_address: ":7173"
+debug: false
+registry:
+  addresses: [""]
+  type: 2
+messaging:
+  type: 1
+  addresses: [""]
+  durable: true
+tracer:
+  enable: false
+  address: ""
+  type: 1
+resilience:
+  rate_limiter:
+    limit: 500
+  circuit_breaker:
+    timeout: 2500
+logger:
+  name: "builder-logger"
+  level: 1
+  color: true
+worker:
+  enable: true
+  addresses: [""]
+  max_concurrency: 5
+oauth:
+  project_id: ""
+  client_id: ""
+  client_secret: ""
+  auth_uri: ""
+  token_uri: ""
+  auth_provider_x509_cert_url: ""
+  redirect_uris: [""]
+  javascript_origins: [""]
+onlyoffice:
+  builder:
+    document_server_url: ""
+    document_server_secret: ""
+    document_server_header: ""
+    gateway_url: ""
+    callback_url: ""
