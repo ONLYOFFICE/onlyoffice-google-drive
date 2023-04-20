@@ -45,8 +45,7 @@ func NewAuthRPCServer(
 func (a AuthRPCServer) BuildMessageHandlers() []rpc.RPCMessageHandler {
 	return []rpc.RPCMessageHandler{
 		{
-			Topic:   "insert-auth",
-			Queue:   "gdrive-auth",
+			Topic:   "gdrive-insert-auth",
 			Handler: a.insertHandler.GetHandler(),
 		},
 	}

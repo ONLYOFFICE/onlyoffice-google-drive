@@ -44,7 +44,8 @@ func Bootstrap(path string, extras ...interface{}) *fx.App {
 	builder := config.BuildNewServerConfig(path)
 	sconf, err := builder()
 	if err != nil {
-		log.DefaultLogger{}.Fatal(err.Error())
+		log := log.NewDefaultLogger(&config.LoggerConfig{})
+		log.Fatal(err.Error())
 		return nil
 	}
 

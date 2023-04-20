@@ -45,7 +45,6 @@ import (
 
 type RPCMessageHandler struct {
 	Topic   string
-	Queue   string
 	Handler interface{}
 }
 
@@ -126,16 +125,8 @@ func NewService(
 	if len(engine.BuildMessageHandlers()) > 0 {
 		for _, entry := range engine.BuildMessageHandlers() {
 			if entry.Handler != nil && entry.Topic != "" {
-				if entry.Queue != "" {
-					if err := micro.RegisterSubscriber(
-						entry.Topic, service.Server(), entry.Handler, server.SubscriberContext(broker.SubOptions.Context), server.SubscriberQueue(entry.Queue),
-					); err != nil {
-						log.Fatalf("could not register a new subscriber with topic %s. Reason: %s", entry.Topic, err.Error())
-					}
-				} else {
-					if err := micro.RegisterSubscriber(entry.Topic, service.Server(), entry.Handler, server.SubscriberContext(broker.SubOptions.Context)); err != nil {
-						log.Fatalf("could not register a new subscriber with topic %s. Reason: %s", entry.Topic, err.Error())
-					}
+				if err := micro.RegisterSubscriber(entry.Topic, service.Server(), entry.Handler, server.SubscriberContext(broker.SubOptions.Context), server.SubscriberQueue(entry.Topic)); err != nil {
+					log.Fatalf("could not register a new subscriber with topic %s. Reason: %s", entry.Topic, err.Error())
 				}
 			}
 		}

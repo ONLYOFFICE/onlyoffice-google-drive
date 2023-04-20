@@ -92,7 +92,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 				return nil, err
 			}
 
-			if err := c.client.Publish(r.Context(), c.client.NewMessage("insert-auth", response.UserResponse{
+			if err := c.client.Publish(r.Context(), c.client.NewMessage("gdrive-insert-auth", response.UserResponse{
 				ID:           uinfo.Id,
 				AccessToken:  token.AccessToken,
 				RefreshToken: token.RefreshToken,
