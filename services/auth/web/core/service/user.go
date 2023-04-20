@@ -276,8 +276,10 @@ func (s userService) DeleteUser(ctx context.Context, uid string) error {
 		}
 	}
 
-	if err := s.cache.Delete(ctx, uid); err != nil {
-		return err
+	if _, _, err := s.cache.Get(ctx, uid); err == nil {
+		if err := s.cache.Delete(ctx, uid); err != nil {
+			return err
+		}
 	}
 
 	s.logger.Debugf("uid %s is valid to perform a delete action", id)
