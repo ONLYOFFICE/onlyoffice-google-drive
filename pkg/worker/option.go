@@ -20,6 +20,8 @@ package worker
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type WorkerType int
@@ -40,6 +42,7 @@ type WorkerRedisCredentials struct {
 type EnqueuerOption func(*EnqueuerOptions)
 
 type EnqueuerOptions struct {
+	TaskID   string
 	MaxRetry int
 	Timeout  time.Duration
 }
@@ -48,6 +51,7 @@ func NewEnqueuerOptions(opts ...EnqueuerOption) EnqueuerOptions {
 	opt := EnqueuerOptions{
 		MaxRetry: 3,
 		Timeout:  0 * time.Second,
+		TaskID:   uuid.NewString(),
 	}
 
 	for _, o := range opts {
@@ -55,6 +59,14 @@ func NewEnqueuerOptions(opts ...EnqueuerOption) EnqueuerOptions {
 	}
 
 	return opt
+}
+
+func WithTaskID(val string) EnqueuerOption {
+	return func(eo *EnqueuerOptions) {
+		if val != "" {
+			eo.TaskID = val
+		}
+	}
 }
 
 func WithMaxRetry(val int) EnqueuerOption {

@@ -29,14 +29,16 @@ import (
 )
 
 type asynqWorker struct {
-	enabled bool
-	srv     *asynq.Server
-	mux     *asynq.ServeMux
+	enabled   bool
+	srv       *asynq.Server
+	mux       *asynq.ServeMux
+	inspector *asynq.Inspector
 }
 
 type asynqEnqueuer struct {
-	enabled bool
-	client  *asynq.Client
+	enabled   bool
+	client    *asynq.Client
+	inspector *asynq.Inspector
 }
 
 func newAsynqWorker(config *config.WorkerConfig, logger plog.Logger) BackgroundWorker {
@@ -64,14 +66,23 @@ func newAsynqWorker(config *config.WorkerConfig, logger plog.Logger) BackgroundW
 			Concurrency: config.Worker.MaxConcurrency,
 			Logger:      logger,
 		}),
-		mux: asynq.NewServeMux(),
+		mux:       asynq.NewServeMux(),
+		inspector: asynq.NewInspector(workerOpts),
 	}
 }
 
-func (w asynqWorker) Register(pattern string, handler func(ctx context.Context, payload []byte) error) {
+func (w asynqWorker) Register(pattern string, handler func(ctx context.Context, payload []byte) error, cleanups ...func(taskID string, payload []byte)) {
 	if w.enabled {
 		w.mux.Handle(pattern, asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
-			return handler(ctx, t.Payload())
+			herr := handler(ctx, t.Payload())
+
+			if info, err := w.inspector.GetTaskInfo("default", t.ResultWriter().TaskID()); herr != nil && err == nil && info.Retried == info.MaxRetry {
+				for _, cleanup := range cleanups {
+					cleanup(t.ResultWriter().TaskID(), t.Payload())
+				}
+			}
+
+			return herr
 		}))
 	}
 }
@@ -106,8 +117,9 @@ func newAsynqEnqueuer(config *config.WorkerConfig) BackgroundEnqueuer {
 	}
 
 	return asynqEnqueuer{
-		enabled: config.Worker.Enable,
-		client:  asynq.NewClient(enqOpts),
+		enabled:   config.Worker.Enable,
+		client:    asynq.NewClient(enqOpts),
+		inspector: asynq.NewInspector(enqOpts),
 	}
 }
 
@@ -116,7 +128,12 @@ func (e asynqEnqueuer) Enqueue(pattern string, task []byte, opts ...EnqueuerOpti
 		options := NewEnqueuerOptions(opts...)
 		t := asynq.NewTask(pattern, task)
 
-		_, err := e.client.Enqueue(t, asynq.MaxRetry(options.MaxRetry), asynq.Timeout(options.Timeout))
+		e.inspector.DeleteTask("default", options.TaskID)
+		_, err := e.client.Enqueue(
+			t, asynq.MaxRetry(options.MaxRetry), asynq.Timeout(options.Timeout),
+			asynq.TaskID(options.TaskID),
+		)
+
 		return err
 	}
 
@@ -128,7 +145,12 @@ func (e asynqEnqueuer) EnqueueContext(ctx context.Context, pattern string, task 
 		options := NewEnqueuerOptions(opts...)
 		t := asynq.NewTask(pattern, task)
 
-		_, err := e.client.EnqueueContext(ctx, t, asynq.MaxRetry(options.MaxRetry), asynq.Timeout(options.Timeout))
+		e.inspector.DeleteTask("default", options.TaskID)
+		_, err := e.client.EnqueueContext(
+			ctx, t, asynq.MaxRetry(options.MaxRetry), asynq.Timeout(options.Timeout),
+			asynq.TaskID(options.TaskID),
+		)
+
 		return err
 	}
 

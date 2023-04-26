@@ -26,7 +26,7 @@ import (
 )
 
 type BackgroundWorker interface {
-	Register(pattern string, handler func(ctx context.Context, payload []byte) error)
+	Register(pattern string, handler func(ctx context.Context, payload []byte) error, cleanups ...func(taskID string, payload []byte))
 	Run()
 }
 
