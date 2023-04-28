@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONLYOFFICE</title>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,300" rel="stylesheet" type="text/css">
+    <link
+        rel="icon"
+        href="/static/images/favicon.ico"
+        type="image/x-icon"
+    />
+    <style>
+        html {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        hr.solid {
+            border-top: 1px solid #ECEEF1;
+        }
+
+        .text {
+            font-family: 'Open Sans';
+            font-weight: 400;
+            font-size: 13px;
+            line-height: 20px;
+            color: #333333;
+            margin: 0;
+        }
+
+        label {
+            font-family: 'Open Sans';
+            font-weight: 600;
+            font-size: 13px;
+            line-height: 20px;
+        }
+
+        span {
+            font-family: 'Open Sans';
+            font-weight: 400;
+            font-size: 12px;
+            line-height: 16px;
+            color: #A3A9AE;
+        }
+
+        .button {
+            height: 40px;
+            width: 100%;
+            padding: 12px 16px 12px 16px;
+            border-radius: 3px;
+            border-width: 0;
+            transition: all 0.2s ease-in;
+            cursor: pointer;
+        }
+
+        .button_primary {
+            background-color: #2DA7DB;
+            color: white;
+        }
+
+        .button_secondary {
+            background-color: #FFFFFF;
+            border: 1px solid #D0D5DA;
+            color: black;
+        }
+
+        .button:focus,
+        .button:hover {
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+    </style>
+</head>
+<body>
+    <div style="width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <div>
+            <h2 style="font-family: Open Sans; font-weight: 700; font-size: 21px; line-height: 28px; padding-left: 1rem;">Open with ONLYOFFICE</h2>
+            <div style="width: 375px;">
+                <hr class="solid" style="margin-bottom: 0.7rem;" />
+                <div style="padding-left: 1rem; padding-right: 1rem;">
+                    <p class="text">This file type can not be opened correctly.</p>
+                    <p class="text">Please select the action:</p>
+                    <form style="margin-top: 0.7rem; margin-bottom: 1rem;">
+                        <div style="margin-bottom: 0.75rem;">
+                            <input type="radio" id="view" name="editor_action" value="View" style="margin: 0 0.2rem 0 0;">
+                            <label for="view">Open the file for viewing only</label>
+                            <br />
+                        </div>
+                        <div style="margin-bottom: 0.75rem;">
+                            <input type="radio" id="create" name="editor_action" value="Create" style="margin: 0 0.2rem 0 0;">
+                            <label for="create">Create an OOXML file copy </label>
+                            <br />
+                            <div style="padding-left: 1.25rem;">
+                                <span>Edit only the file copy, not the original file</span>
+                            </div>
+                        </div>
+                        <div>
+                            <input type="radio" id="edit" name="editor_action" value="Edit" style="margin: 0 0.2rem 0 0;">
+                            <label for="edit">Open the file for editing</label>
+                            <br />
+                            <div style="padding-left: 1.25rem;">
+                                <span>Due to format restrictions, the data might be lost when saving saving to the original file</span>
+                            </div>
+                        </div>
+                    </form>
+                    <div style="display: flex; justify-content: center; align-items: center; margin: 6px;">
+                        <button class="button button_primary" style="flex-grow: 2; flex-basis: 0; margin-right: 6px;">Open</button>
+                        <button class="button button_secondary" style="flex-grow: 1; flex-basis: 0;"">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
