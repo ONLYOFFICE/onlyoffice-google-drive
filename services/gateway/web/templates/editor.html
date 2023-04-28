@@ -25,122 +25,170 @@
 *-->
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
-    />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <title>ONLYOFFICE</title>
-    <link
-      rel="icon"
-      href="/static/images/{{.docType}}.ico"
-      type="image/x-icon"
-    />
-    <style>
-      html {
-        height: 100%;
-        width: 100%;
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>ONLYOFFICE</title>
+  <link rel="icon" href="/static/images/{{.docType}}.ico" type="image/x-icon" />
+  <style>
+    #spinner {
+      display: flex;
+      position: relative;
+      justify-content: center;
+      align-items: center;
+      height: 56px;
+      width: 56px;
+      box-sizing: border-box;
+      background: conic-gradient(from 90deg at 50% 50%, rgba(255, 255, 255, 0.0001) 0deg, #454545 359.96deg, rgba(255, 255, 255, 0.0001) 360deg);
+      border-radius: 56px;
+      animation: 1s rotate infinite linear;
+    }
+
+    #spinner::before {
+      content: "";
+      height: 40px;
+      width: 40px;
+      background: #fff;
+      border-radius: 48px;
+    }
+
+    #spinner::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 8px;
+      width: 8px;
+      background: #454545;
+      border-radius: 8px;
+    }
+
+    @keyframes rotate {
+      0% {
+        transform: rotate(0deg);
       }
 
-      body {
-        background: #fff;
-        color: #333;
-        font-family: Arial, Tahoma, sans-serif;
-        font-size: 12px;
-        font-weight: normal;
-        height: 100%;
-        margin: 0;
-        overflow-y: hidden;
-        padding: 0;
-        text-decoration: none;
+      100% {
+        transform: rotate(360deg);
       }
+    }
 
-      .form {
-        height: 100%;
-      }
+    .container_button {
+      height: 40px;
+      width: 119px;
+      padding: 12px 16px 12px 16px;
+      background-color: #2DA7DB;
+      border-radius: 3px;
+      border-width: 0;
+      color: white;
+      transition: all 0.2s ease-in;
+      cursor: pointer;
+    }
 
-      div {
-        margin: 0;
-        padding: 0;
-      }
-    </style>
-  </head>
+    .container_button:focus,
+    .container_button:hover {
+      box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+    }
 
-  <body>
-    <div class="form">
+    html {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      background: #fff;
+      color: #333;
+      font-family: Arial, Tahoma, sans-serif;
+      font-size: 12px;
+      font-weight: normal;
+      height: 100%;
+      margin: 0;
+      overflow-y: hidden;
+      padding: 0;
+      text-decoration: none;
+    }
+
+    .form {
+      height: 100%;
+    }
+
+    div {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+</head>
+
+<body>
+  <div style="position: relative; width: 100vw; height: 100vh">
+    <div class="form" style="position: absolute; width: 100vw; height: 100vh; z-index: 0;">
       <div id="iframeEditor"></div>
     </div>
-    <script type="text/javascript" src="{{.apijs}}"></script>
-    <script type="text/javascript" language="javascript">
-      var docEditor;
+    <div class="container" style="z-index: 1;">
+      <div
+        style="position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <div id="spinner" />
+      </div>
+      <button class="container_button" onclick="window.close()" style="margin-top: 2rem;">Cancel</button>
+    </div>
+  </div>
+  <script type="text/javascript" src="{{ .apijs }}" onload="$('.container').detach()"></script>
+  <script type="text/javascript" language="javascript">
+    var docEditor;
 
-      var innerAlert = function (message) {
-          if (console && console.log)
-              console.log(message);
-      };
+    var innerAlert = function (message) {
+      if (console && console.log)
+        console.log(message);
+    };
 
-      var onAppReady = function () {  // the application is loaded into the browser
-          innerAlert("Document editor ready");
-      };
+    var onAppReady = function () {  // the application is loaded into the browser
+      innerAlert("Document editor ready");
+    };
 
-      var onRequestClose = function () {
-          if (window.opener) {
-              window.close();
-              return;
-          }
-          docEditor.destroyEditor();
-      };
-
-      var onRequestSaveAs = async function (event) {
-          await fetch(`/api/convert${window.location.search}`, { 
-            method: "POST",
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              title: event.data.title,
-              fileType: event.data.fileType,
-              downloadURL: event.data.url,
-            })
-          });
-      };
-
-
-      var events = {
-          "onAppReady": onAppReady,
-          "onRequestClose": onRequestClose,
-          "onRequestSaveAs": onRequestSaveAs,
-      };
-
-      var config = {{ .config }};
-      config["events"] = events;
-
-      var connectEditor = function () {
-          docEditor = new DocsAPI.DocEditor("iframeEditor", config);
-          fixSize();
-      };
-
-      var fixSize = function () {
-          var wrapEl = document.getElementsByClassName("form");
-          if (wrapEl.length) {
-              wrapEl[0].style.height = screen.availHeight + "px";
-              window.scrollTo(0, -1);
-              wrapEl[0].style.height = window.innerHeight + "px";
-          }
-      };
-
-      if (window.addEventListener) {
-          window.addEventListener("load", connectEditor);
-          window.addEventListener("resize", fixSize);
-      } else if (window.attachEvent) {
-          window.attachEvent("onload", connectEditor);
-          window.attachEvent("onresize", fixSize);
+    var onRequestClose = function () {
+      if (window.opener) {
+        window.close();
+        return;
       }
-    </script>
-  </body>
+      docEditor.destroyEditor();
+    };
+
+    var events = {
+      "onAppReady": onAppReady,
+      "onRequestClose": onRequestClose,
+    };
+
+    var config = {{ .config }};
+    config["events"] = events;
+
+    var connectEditor = function () {
+      docEditor = new DocsAPI.DocEditor("iframeEditor", config);
+      fixSize();
+    };
+
+    var fixSize = function () {
+      var wrapEl = document.getElementsByClassName("form");
+      if (wrapEl.length) {
+        wrapEl[0].style.height = screen.availHeight + "px";
+        window.scrollTo(0, -1);
+        wrapEl[0].style.height = window.innerHeight + "px";
+      }
+    };
+
+    if (window.addEventListener) {
+      window.addEventListener("load", connectEditor);
+      window.addEventListener("resize", fixSize);
+    } else if (window.attachEvent) {
+      window.attachEvent("onload", connectEditor);
+      window.attachEvent("onresize", fixSize);
+    }
+  </script>
+</body>
 </html>
