@@ -123,12 +123,11 @@
       padding: 0;
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
 </head>
 
 <body>
   <div style="position: relative; width: 100vw; height: 100vh">
-    <div class="form" style="position: absolute; width: 100vw; height: 100vh; z-index: 0;">
+    <div id="editor-form" class="form" style="position: absolute; width: 100vw; height: 100vh; visibility: hidden;">
       <div id="iframeEditor"></div>
     </div>
     <div class="container" style="z-index: 1;">
@@ -139,7 +138,7 @@
       <button class="container_button" onclick="window.close()" style="margin-top: 2rem;">Cancel</button>
     </div>
   </div>
-  <script type="text/javascript" src="{{ .apijs }}" onload="$('.container').detach()"></script>
+  <script type="text/javascript" src="{{ .apijs }}"></script>
   <script type="text/javascript" language="javascript">
     var docEditor;
 
@@ -150,6 +149,10 @@
 
     var onAppReady = function () {  // the application is loaded into the browser
       innerAlert("Document editor ready");
+      document.getElementsByClassName('container').item(0).remove();
+      setTimeout(() => {
+        document.getElementsByClassName('form').item(0).style.visibility = "visible";
+      }, 150);
     };
 
     var onRequestClose = function () {
@@ -160,9 +163,26 @@
       docEditor.destroyEditor();
     };
 
+    var onRequestSaveAs = async function (event) {
+      await fetch(`/api/convert${window.location.search}`, {
+        method: "POST",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: event.data.title,
+          fileType: event.data.fileType,
+          downloadURL: event.data.url,
+        })
+      });
+    };
+
+
     var events = {
       "onAppReady": onAppReady,
       "onRequestClose": onRequestClose,
+      "onRequestSaveAs": onRequestSaveAs,
     };
 
     var config = {{ .config }};
