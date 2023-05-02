@@ -11,6 +11,7 @@
         href="/static/images/favicon.ico"
         type="image/x-icon"
     />
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         html {
             margin: 0;
@@ -56,20 +57,54 @@
             cursor: pointer;
         }
 
+        
         .button_primary {
             background-color: #2DA7DB;
             color: white;
         }
-
+        
         .button_secondary {
             background-color: #FFFFFF;
             border: 1px solid #D0D5DA;
             color: black;
         }
-
+        
         .button:focus,
         .button:hover {
             box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .tooltip {
+            transform: translate(40.5%, -70%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 522px;
+            height: 68px;
+            background: #FFFFFF;
+            position: relative;
+            -moz-border-radius: 12px;
+            -webkit-border-radius: 12px;
+            border-radius: 12px;
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        .tooltip::before {
+            content: "";
+            position: absolute;
+            right: 100%;
+            top: 24px;
+            width: 0;
+            height: 0;
+            border-top: 13px solid transparent;
+            border-right: 26px solid #FFFFFF;
+            border-bottom: 13px solid transparent;
         }
     </style>
 </head>
@@ -82,14 +117,14 @@
                 <div style="padding-left: 1rem; padding-right: 1rem;">
                     <p class="text">This file type can not be opened correctly.</p>
                     <p class="text">Please select the action:</p>
-                    <form style="margin-top: 0.7rem; margin-bottom: 1rem;">
+                    <form style="margin-top: 0.7rem; margin-bottom: 1rem;" x-data="convertForm()" @submit.prevent="submit">
                         <div style="margin-bottom: 0.75rem;">
-                            <input type="radio" id="view" name="editor_action" value="View" style="margin: 0 0.2rem 0 0;">
+                            <input type="radio" id="view" name="editor_action" value="View" style="margin: 0 0.2rem 0 0;" x-model="action">
                             <label for="view">Open the file for viewing only</label>
                             <br />
                         </div>
                         <div style="margin-bottom: 0.75rem;">
-                            <input type="radio" id="create" name="editor_action" value="Create" style="margin: 0 0.2rem 0 0;">
+                            <input type="radio" id="create" name="editor_action" value="Create" style="margin: 0 0.2rem 0 0;" x-model="action">
                             <label for="create">Create an OOXML file copy </label>
                             <br />
                             <div style="padding-left: 1.25rem;">
@@ -97,21 +132,49 @@
                             </div>
                         </div>
                         <div>
-                            <input type="radio" id="edit" name="editor_action" value="Edit" style="margin: 0 0.2rem 0 0;">
+                            <input type="radio" id="edit" name="editor_action" value="Edit" style="margin: 0 0.2rem 0 0;" x-model="action">
                             <label for="edit">Open the file for editing</label>
+                            <span 
+                                style="cursor: pointer;"
+                                x-data="{ tooltip: false }" 
+                                x-on:mouseover="tooltip = true" 
+                                x-on:mouseleave="tooltip = false"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M6 12C9.31371 12 12 9.31371 12 6C12 2.68629 9.31371 0 6 0C2.68629 0 0 2.68629 0 6C0 9.31371 2.68629 12 6 12ZM5 6C5 5.44772 5.44772 5 6 5C6.55228 5 7 5.44772 7 6V9C7 9.55229 6.55228 10 6 10C5.44772 10 5 9.55229 5 9V6ZM6 2C5.44772 2 5 2.44772 5 3C5 3.55228 5.44772 4 6 4C6.55228 4 7 3.55228 7 3C7 2.44772 6.55228 2 6 2Z" fill="#D0D5DA"/>
+                                </svg>
+                                <div style="position: absolute;">
+                                    <div x-show="tooltip" class="tooltip">
+                                        <div style="padding: 10px; display: flex; justify-content: center; align-items: center;">
+                                            <b style="color: black;">More info:&nbsp;</b>
+                                            <a style="text-decoration: underline; color: black;" href="https://api.onlyoffice.com/editors/nextcloud#editable">
+                                                https://api.onlyoffice.com/editors/nextcloud#editable
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>                             
+                            </span>
                             <br />
                             <div style="padding-left: 1.25rem;">
-                                <span>Due to format restrictions, the data might be lost when saving saving to the original file</span>
+                                <span>Due to format restrictions, the data might be lost when saving to the original file</span>
                             </div>
                         </div>
+                        <div style="display: flex; justify-content: center; align-items: center; margin: 6px; padding-top: 1rem;">
+                            <button type="submit" class="button button_primary" style="flex-grow: 2; flex-basis: 0; margin-right: 6px;" :disabled="!action">Open</button>
+                            <button class="button button_secondary" style="flex-grow: 1; flex-basis: 0;" onclick="window.close();">Cancel</button>
+                        </div>
                     </form>
-                    <div style="display: flex; justify-content: center; align-items: center; margin: 6px;">
-                        <button class="button button_primary" style="flex-grow: 2; flex-basis: 0; margin-right: 6px;">Open</button>
-                        <button class="button button_secondary" style="flex-grow: 1; flex-basis: 0;"">Cancel</button>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+        function convertForm() {
+            return {
+              action: '',
+              submit() {},
+            };
+          }
+    </script>
 </body>
 </html>
