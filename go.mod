@@ -18,6 +18,7 @@ require (
 	github.com/go-micro/plugins/v4/wrapper/select/roundrobin v1.2.0
 	github.com/go-micro/plugins/v4/wrapper/trace/opentelemetry v1.2.0
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/hellofresh/health-go/v5 v5.0.0
 	github.com/justinas/alice v1.2.0
@@ -167,7 +168,7 @@ require (
 	github.com/eko/gocache/store/redis/v4 v4.1.2
 	github.com/go-micro/plugins/v4/broker/memory v1.2.0
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/hibiken/asynq v0.24.0
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kamva/mgm/v3 v3.5.0
