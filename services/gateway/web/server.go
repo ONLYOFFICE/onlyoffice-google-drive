@@ -24,9 +24,9 @@ import (
 	shttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
-	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 )
@@ -48,8 +48,6 @@ func NewServer(
 	credentialsConfig *shared.OAuthCredentialsConfig,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
-	gin.SetMode(gin.ReleaseMode)
-
 	service := GdriveHTTPService{
 		mux:              chi.NewRouter(),
 		store:            sessions.NewCookieStore([]byte(credentialsConfig.Credentials.ClientSecret)),
@@ -83,8 +81,9 @@ func (s *GdriveHTTPService) InitializeServer() *chi.Mux {
 // InitializeRoutes builds all http routes.
 func (s *GdriveHTTPService) InitializeRoutes() {
 	fs := http.FileServer(http.Dir("services/gateway/static"))
+	csrfMiddleware := csrf.Protect([]byte(s.credentials.ClientSecret))
 	s.mux.Group(func(r chi.Router) {
-		r.Use(chimiddleware.Recoverer, chimiddleware.NoCache)
+		r.Use(chimiddleware.Recoverer, chimiddleware.NoCache, csrfMiddleware)
 
 		r.Handle("/static/*", http.StripPrefix("/static/", fs))
 
@@ -95,6 +94,7 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 		r.Route("/api", func(cr chi.Router) {
 			cr.Get("/download", s.fileController.BuildDownloadFile())
 			cr.Get("/editor", s.editorController.BuildGetEditor())
+			cr.Get("/convert", s.fileController.BuildConvertPage())
 			cr.Post("/convert", s.fileController.BuildConvertFile())
 		})
 

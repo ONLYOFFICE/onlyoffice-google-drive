@@ -226,9 +226,6 @@ func (c *ConvertCommand) uploadConvertedFile(input convertInputOutput) (convertI
 }
 
 func (c *ConvertCommand) Execute(rw http.ResponseWriter, r *http.Request, state *request.DriveState) {
-	fmt.Println("1")
-	fmt.Println(state.IDS[0])
-	fmt.Println("1")
 	res, err := functional.NewPipe[convertInputOutput]().
 		Next(func(input convertInputOutput) (convertInputOutput, error) {
 			var ures response.UserResponse
@@ -256,10 +253,6 @@ func (c *ConvertCommand) Execute(rw http.ResponseWriter, r *http.Request, state 
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Println("2")
-	fmt.Printf(res.State.IDS[0])
-	fmt.Println("2")
 
 	http.Redirect(
 		rw, r,

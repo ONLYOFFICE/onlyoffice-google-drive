@@ -27,7 +27,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -104,9 +104,9 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 				return nil, err
 			}
 
-			signature, err := c.jwtManager.Sign(c.oauth.ClientSecret, jwt.StandardClaims{
-				Id:        uinfo.Id,
-				ExpiresAt: time.Now().Add(7 * 24 * time.Hour).UnixMilli(),
+			signature, err := c.jwtManager.Sign(c.oauth.ClientSecret, jwt.RegisteredClaims{
+				ID:        uinfo.Id,
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			})
 
 			if err != nil {

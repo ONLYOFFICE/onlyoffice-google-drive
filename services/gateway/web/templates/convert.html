@@ -17,6 +17,13 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+
+        }
+
+        html::-webkit-scrollbar { 
+            display: none;
         }
 
         hr.solid {
@@ -119,20 +126,23 @@
                     <p class="text">Please select the action:</p>
                     <form style="margin-top: 0.7rem; margin-bottom: 1rem;" x-data="convertForm()" @submit.prevent="submit">
                         <div style="margin-bottom: 0.75rem;">
-                            <input type="radio" id="view" name="editor_action" value="View" style="margin: 0 0.2rem 0 0;" x-model="action">
+                            <input type="radio" id="view" name="editor_action" value="view" style="margin: 0 0.2rem 0 0;" x-model="action">
                             <label for="view">Open the file for viewing only</label>
                             <br />
                         </div>
+                        {{if .OOXML}}
                         <div style="margin-bottom: 0.75rem;">
-                            <input type="radio" id="create" name="editor_action" value="Create" style="margin: 0 0.2rem 0 0;" x-model="action">
+                            <input type="radio" id="create" name="editor_action" value="create" style="margin: 0 0.2rem 0 0;" x-model="action">
                             <label for="create">Create an OOXML file copy </label>
                             <br />
                             <div style="padding-left: 1.25rem;">
                                 <span>Edit only the file copy, not the original file</span>
                             </div>
                         </div>
+                        {{end}}
+                        {{if .LossEdit}}
                         <div>
-                            <input type="radio" id="edit" name="editor_action" value="Edit" style="margin: 0 0.2rem 0 0;" x-model="action">
+                            <input type="radio" id="edit" name="editor_action" value="edit" style="margin: 0 0.2rem 0 0;" x-model="action">
                             <label for="edit">Open the file for editing</label>
                             <span 
                                 style="cursor: pointer;"
@@ -159,10 +169,12 @@
                                 <span>Due to format restrictions, the data might be lost when saving to the original file</span>
                             </div>
                         </div>
+                        {{end}}
                         <div style="display: flex; justify-content: center; align-items: center; margin: 6px; padding-top: 1rem;">
                             <button type="submit" class="button button_primary" style="flex-grow: 2; flex-basis: 0; margin-right: 6px;" :disabled="!action">Open</button>
                             <button class="button button_secondary" style="flex-grow: 1; flex-basis: 0;" onclick="window.close();">Cancel</button>
                         </div>
+                        {{ .csrfField }}
                     </form>
                 </div>
             </div>
@@ -172,7 +184,25 @@
         function convertForm() {
             return {
               action: '',
-              submit() {},
+              async submit() {
+                const csrfToken = document.getElementsByName("gorilla.csrf.Token")[0].value;
+                const urlSearchParams = new URLSearchParams(window.location.search);
+                const params = Object.fromEntries(urlSearchParams.entries());
+                const resp = await fetch(`/api/convert`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        action: this.action,
+                        state: JSON.parse(params.state || ''),
+                    }),
+                });
+
+                if (resp.redirected) {
+                    window.location.assign(resp.url);
+                }
+              },
             };
           }
     </script>
