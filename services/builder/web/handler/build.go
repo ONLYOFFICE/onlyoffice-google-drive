@@ -82,20 +82,10 @@ func NewConfigHandler(
 
 func (c ConfigHandler) processConfig(user response.UserResponse, req request.DriveState, ctx context.Context) (response.BuildConfigResponse, error) {
 	var config response.BuildConfigResponse
-
-	var ures response.UserResponse
-	if err := c.client.Call(ctx, c.client.NewRequest(
-		fmt.Sprintf("%s:auth", c.server.Namespace),
-		"UserSelectHandler.GetUser", req.UserID,
-	), &ures); err != nil {
-		c.logger.Debugf("could not get user %s access info: %s", req.UserID, err.Error())
-		return config, err
-	}
-
 	client := c.credentials.Client(ctx, &oauth2.Token{
-		AccessToken:  ures.AccessToken,
-		TokenType:    ures.TokenType,
-		RefreshToken: ures.RefreshToken,
+		AccessToken:  user.AccessToken,
+		TokenType:    user.TokenType,
+		RefreshToken: user.RefreshToken,
 	})
 
 	var wg sync.WaitGroup
@@ -162,7 +152,6 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 		UserID: req.UserID,
 		FileID: req.IDS[0],
 	}
-
 	downloadToken.IssuedAt = jwt.NewNumericDate(time.Now())
 	downloadToken.ExpiresAt = jwt.NewNumericDate(time.Now().Add(4 * time.Minute))
 	tkn, _ := c.jwtManager.Sign(c.credentials.ClientSecret, downloadToken)
@@ -200,9 +189,11 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	}
 
 	if strings.TrimSpace(filename) != "" {
+		var (
+			fileType string
+			err      error
+		)
 		ext := c.fileUtil.GetFileExt(filename)
-		var fileType string
-		var err error
 		if nExt, ok := shared.GdriveMimeOnlyofficeExtension[file.MimeType]; ok {
 			fileType, err = c.fileUtil.GetFileType(nExt)
 			ext = nExt
@@ -242,7 +233,6 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 
 func (c ConfigHandler) BuildConfig(ctx context.Context, payload request.DriveState, res *response.BuildConfigResponse) error {
 	c.logger.Debugf("processing a docs config: %s", payload.IDS[0])
-
 	config, err, _ := c.group.Do(fmt.Sprint(payload.UserID), func() (interface{}, error) {
 		req := c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
