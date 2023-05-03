@@ -39,6 +39,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 	"github.com/golang-jwt/jwt/v5"
 	"go-micro.dev/v4/client"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v2"
 	"google.golang.org/api/option"
@@ -102,11 +103,14 @@ func (c *ConvertCommand) getFile(input convertInputOutput) (convertInputOutput, 
 
 	input.File = file
 	return convertInputOutput{
-		Ctx:     input.Ctx,
-		Service: srv,
-		State:   input.State,
-		Ures:    input.Ures,
-		File:    file,
+		Ctx:           input.Ctx,
+		Service:       srv,
+		State:         input.State,
+		Creq:          input.Creq,
+		Cres:          input.Cres,
+		Ures:          input.Ures,
+		File:          file,
+		DownloadToken: input.DownloadToken,
 	}, nil
 }
 
@@ -122,6 +126,8 @@ func (c *ConvertCommand) generateDownloadToken(input convertInputOutput) (conver
 		Ctx:           input.Ctx,
 		Service:       input.Service,
 		State:         input.State,
+		Creq:          input.Creq,
+		Cres:          input.Cres,
 		Ures:          input.Ures,
 		File:          input.File,
 		DownloadToken: tkn,
@@ -147,17 +153,14 @@ func (c *ConvertCommand) sendConvertRequest(input convertInputOutput) (convertIn
 	}
 	creq.IssuedAt = jwt.NewNumericDate(time.Now())
 	creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(2 * time.Minute))
-	ctok, err := c.jwtManager.Sign(
-		c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret,
-		creq,
-	)
-
+	ctok, err := c.jwtManager.Sign(c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret, creq)
 	if err != nil {
 		return input, err
 	}
 
 	creq.Token = ctok
-	req, err := http.NewRequest(
+	req, err := http.NewRequestWithContext(
+		input.Ctx,
 		"POST",
 		fmt.Sprintf("%s/ConvertService.ashx", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL),
 		bytes.NewBuffer(creq.ToJSON()),
@@ -169,7 +172,7 @@ func (c *ConvertCommand) sendConvertRequest(input convertInputOutput) (convertIn
 	}
 
 	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := otelhttp.DefaultClient.Do(req)
 	if err != nil {
 		c.logger.Errorf("could not send a conversion api request: %s", err.Error())
 		return input, err
@@ -194,7 +197,7 @@ func (c *ConvertCommand) sendConvertRequest(input convertInputOutput) (convertIn
 }
 
 func (c *ConvertCommand) uploadConvertedFile(input convertInputOutput) (convertInputOutput, error) {
-	cfile, err := http.Get(input.Cres.FileURL)
+	cfile, err := otelhttp.Get(input.Ctx, input.Cres.FileURL)
 	if err != nil {
 		c.logger.Errorf("could not retreive a converted file: %s", err.Error())
 		return input, err
@@ -219,7 +222,7 @@ func (c *ConvertCommand) uploadConvertedFile(input convertInputOutput) (convertI
 		Title:                        filename,
 		Parents:                      input.File.Parents,
 		MimeType:                     mime.TypeByExtension(fmt.Sprintf(".%s", input.Cres.FileType)),
-	}).Media(cfile.Body).Do()
+	}).Context(input.Ctx).Media(cfile.Body).Do()
 
 	if err != nil {
 		c.logger.Errorf("could not modify file %s: %s", input.State.IDS[0], err.Error())
