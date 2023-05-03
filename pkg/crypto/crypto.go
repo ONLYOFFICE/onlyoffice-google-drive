@@ -18,7 +18,10 @@
 
 package crypto
 
-import "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
+import (
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
+	"github.com/golang-jwt/jwt/v5"
+)
 
 type Encryptor interface {
 	Encrypt(text string, key []byte) (string, error)
@@ -35,9 +38,7 @@ func NewEncryptor(config *config.CryptoConfig) Encryptor {
 }
 
 type JwtManager interface {
-	Sign(secret string, payload interface {
-		Valid() error
-	}) (string, error)
+	Sign(secret string, payload jwt.Claims) (string, error)
 	Verify(secret, jwtToken string, body interface{}) error
 }
 

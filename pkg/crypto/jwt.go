@@ -21,7 +21,7 @@ package crypto
 import (
 	"errors"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -38,9 +38,7 @@ func newOnlyofficeJwtManager() JwtManager {
 	return onlyofficeJwtManager{}
 }
 
-func (j onlyofficeJwtManager) Sign(secret string, payload interface {
-	Valid() error
-}) (string, error) {
+func (j onlyofficeJwtManager) Sign(secret string, payload jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	ss, err := token.SignedString([]byte(secret))
 
