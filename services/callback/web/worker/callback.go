@@ -36,6 +36,7 @@ import (
 	"go-micro.dev/v4/client"
 	"go-micro.dev/v4/logger"
 	"go-micro.dev/v4/util/backoff"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v2"
@@ -94,6 +95,18 @@ func (c CallbackWorker) UploadFile(ctx context.Context, payload []byte) error {
 	userChan := make(chan response.UserResponse, 1)
 	fileChan := make(chan io.ReadCloser, 1)
 
+	resp, err := otelhttp.Head(tctx, msg.DownloadURL)
+	if err != nil {
+		c.logger.Errorf("could not send a head request: %s", err.Error())
+		return err
+	}
+
+	defer resp.Body.Close()
+	if resp.ContentLength > c.onlyoffice.Onlyoffice.Callback.MaxSize {
+		c.logger.Warnf("could not proceed with worker: %s", onlyoffice.ErrInvalidContentLength.Error())
+		return onlyoffice.ErrInvalidContentLength
+	}
+
 	go func() {
 		defer wg.Done()
 		req := c.client.NewRequest(
@@ -114,17 +127,10 @@ func (c CallbackWorker) UploadFile(ctx context.Context, payload []byte) error {
 
 	go func() {
 		defer wg.Done()
-		resp, err := http.Get(msg.DownloadURL)
+		resp, err := otelhttp.Get(tctx, msg.DownloadURL)
 		if err != nil {
 			c.logger.Errorf("could not download a new file: %s", err.Error())
 			errChan <- err
-			return
-		}
-
-		if resp.ContentLength > c.onlyoffice.Onlyoffice.Callback.MaxSize {
-			c.logger.Warnf("could not proceed with worker: %s", onlyoffice.ErrInvalidContentLength.Error())
-			errChan <- onlyoffice.ErrInvalidContentLength
-			resp.Body.Close()
 			return
 		}
 
@@ -144,13 +150,11 @@ func (c CallbackWorker) UploadFile(ctx context.Context, payload []byte) error {
 	body := <-fileChan
 	defer body.Close()
 
-	client := c.credentials.Client(ctx, &oauth2.Token{
+	srv, err := drive.NewService(tctx, option.WithHTTPClient(c.credentials.Client(ctx, &oauth2.Token{
 		AccessToken:  ures.AccessToken,
 		RefreshToken: ures.RefreshToken,
 		TokenType:    ures.TokenType,
-	})
-
-	srv, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	})))
 	if err != nil {
 		c.logger.Errorf("could not initialize drive service: %s", err.Error())
 		return err

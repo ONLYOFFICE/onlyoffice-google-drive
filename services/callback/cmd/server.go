@@ -39,16 +39,10 @@ func Server() *cli.Command {
 				Usage:   "sets custom configuration path",
 				Aliases: []string{"config", "conf", "c"},
 			},
-			&cli.StringFlag{
-				Name:    "environment",
-				Usage:   "sets servers environment (development, testing, production)",
-				Aliases: []string{"env", "e"},
-			},
 		},
 		Action: func(c *cli.Context) error {
 			var (
 				CONFIG_PATH = c.String("config_path")
-				// ENVIRONMENT = c.String("environment")
 			)
 
 			app := pkg.Bootstrap(
