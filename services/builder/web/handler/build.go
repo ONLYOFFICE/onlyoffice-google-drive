@@ -33,6 +33,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/mileusna/useragent"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -162,8 +163,8 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 		FileID: req.IDS[0],
 	}
 
-	downloadToken.IssuedAt = 0
-	downloadToken.ExpiresAt = time.Now().Add(4 * time.Minute).UnixMilli()
+	downloadToken.IssuedAt = jwt.NewNumericDate(time.Now())
+	downloadToken.ExpiresAt = jwt.NewNumericDate(time.Now().Add(4 * time.Minute))
 	tkn, _ := c.jwtManager.Sign(c.credentials.ClientSecret, downloadToken)
 
 	file := <-fileChan
@@ -217,7 +218,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 
 		config.Document.FileType = ext
 		config.Document.Permissions = response.Permissions{
-			Edit:                 c.fileUtil.IsExtensionEditable(ext),
+			Edit:                 c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit),
 			Comment:              true,
 			Download:             true,
 			Print:                false,
