@@ -16,6 +16,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -65,6 +66,27 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
 			errorPage.Execute(rw, nil)
+			return
+		}
+
+		session, _ := c.store.Get(r, state.UserID)
+		val, ok := session.Values["token"].(string)
+		if !ok {
+			c.logger.Debugf("could not cast a session jwt")
+			session.Options.MaxAge = -1
+			session.Save(r, rw)
+			http.Redirect(rw, r.WithContext(r.Context()), c.oauth.AuthCodeURL(
+				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
+			), http.StatusSeeOther)
+			return
+		}
+
+		var token jwt.RegisteredClaims
+		if err := c.jwtManager.Verify(c.oauth.ClientSecret, val, &token); err != nil {
+			c.logger.Warnf("could not verify a jwt: %s", err.Error())
+			http.Redirect(rw, r.WithContext(r.Context()), c.oauth.AuthCodeURL(
+				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
+			), http.StatusSeeOther)
 			return
 		}
 
