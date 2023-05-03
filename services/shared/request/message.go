@@ -30,16 +30,3 @@ func (s JobMessage) ToJSON() []byte {
 	buf, _ := json.Marshal(s)
 	return buf
 }
-
-type ConvertJobMessage struct {
-	FileID      string `json:"fileID"`
-	Type        string `json:"fileType"`
-	Title       string `json:"title"`
-	UserID      string `json:"userID"`
-	DownloadURL string `json:"downloadURL"`
-}
-
-func (s ConvertJobMessage) ToJSON() []byte {
-	buf, _ := json.Marshal(s)
-	return buf
-}
