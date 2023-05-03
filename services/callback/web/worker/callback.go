@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -122,9 +121,7 @@ func (c CallbackWorker) UploadFile(ctx context.Context, payload []byte) error {
 			return
 		}
 
-		if val, err := strconv.ParseInt(
-			resp.Header.Get("Content-Length"), 10, 0,
-		); val > c.onlyoffice.Onlyoffice.Callback.MaxSize || err != nil {
+		if resp.ContentLength > c.onlyoffice.Onlyoffice.Callback.MaxSize {
 			c.logger.Warnf("could not proceed with worker: %s", onlyoffice.ErrInvalidContentLength.Error())
 			errChan <- onlyoffice.ErrInvalidContentLength
 			resp.Body.Close()
