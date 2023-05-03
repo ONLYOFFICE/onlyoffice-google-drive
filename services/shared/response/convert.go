@@ -16,34 +16,16 @@
  *
  */
 
-package request
+package response
 
-import (
-	"encoding/json"
+import "encoding/json"
 
-	"github.com/golang-jwt/jwt/v5"
-)
-
-type DriveState struct {
-	IDS       []string `json:"ids"`
-	Action    string   `json:"action"`
-	UserID    string   `json:"userId"`
-	UserAgent string   `json:"userAgent,omitempty"`
-	ForceEdit bool     `json:"forceEdit"`
+type ConvertResponse struct {
+	FileURL  string `json:"fileUrl"`
+	FileType string `json:"fileType"`
 }
 
-func (c DriveState) ToJSON() []byte {
-	buf, _ := json.Marshal(c)
-	return buf
-}
-
-type DriveDownloadToken struct {
-	jwt.RegisteredClaims
-	UserID string `json:"userId"`
-	FileID string `json:"fileId"`
-}
-
-func (c DriveDownloadToken) ToJSON() []byte {
-	buf, _ := json.Marshal(c)
+func (r ConvertResponse) ToJSON() []byte {
+	buf, _ := json.Marshal(r)
 	return buf
 }

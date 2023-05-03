@@ -18,8 +18,33 @@
 
 package request
 
-type ConvertRequest struct {
-	Title       string `json:"title"`
-	Type        string `json:"fileType"`
-	DownloadURL string `json:"downloadURL"`
+import (
+	"encoding/json"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type ConvertRequestBody struct {
+	Action string     `json:"action"`
+	State  DriveState `json:"state"`
+}
+
+func (r ConvertRequestBody) ToJSON() []byte {
+	buf, _ := json.Marshal(r)
+	return buf
+}
+
+type ConvertAPIRequest struct {
+	jwt.RegisteredClaims
+	Async      bool   `json:"async"`
+	Key        string `json:"key"`
+	Filetype   string `json:"filetype"`
+	Outputtype string `json:"outputtype"`
+	URL        string `json:"url"`
+	Token      string `json:"token,omitempty"`
+}
+
+func (r ConvertAPIRequest) ToJSON() []byte {
+	buf, _ := json.Marshal(r)
+	return buf
 }

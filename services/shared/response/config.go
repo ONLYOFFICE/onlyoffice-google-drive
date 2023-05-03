@@ -21,11 +21,11 @@ package response
 import (
 	"encoding/json"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type BuildConfigResponse struct {
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 	Document     Document     `json:"document"`
 	DocumentType string       `json:"documentType"`
 	EditorConfig EditorConfig `json:"editorConfig"`
