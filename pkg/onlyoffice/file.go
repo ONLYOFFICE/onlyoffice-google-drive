@@ -21,52 +21,71 @@ const (
 )
 
 var OnlyofficeEditableExtensions map[string]string = map[string]string{
-	"xlsx": _OnlyofficeCellType,
-	"pptx": _OnlyofficeSlideType,
-	"docx": _OnlyofficeWordType,
+	"docm":  _OnlyofficeWordType,
+	"docx":  _OnlyofficeWordType,
+	"docxf": _OnlyofficeWordType,
+	"oform": _OnlyofficeWordType,
+	"dotm":  _OnlyofficeWordType,
+	"dotx":  _OnlyofficeWordType,
+	"xlsm":  _OnlyofficeCellType,
+	"xlsx":  _OnlyofficeCellType,
+	"xltm":  _OnlyofficeCellType,
+	"xltx":  _OnlyofficeCellType,
+	"potm":  _OnlyofficeSlideType,
+	"potx":  _OnlyofficeSlideType,
+	"ppsm":  _OnlyofficeSlideType,
+	"ppsx":  _OnlyofficeSlideType,
+	"pptm":  _OnlyofficeSlideType,
+	"pptx":  _OnlyofficeSlideType,
 }
 
-var OnlyofficeFileExtensions map[string]string = map[string]string{
-	"xls":  _OnlyofficeCellType,
-	"xlsx": _OnlyofficeCellType,
-	"xlsm": _OnlyofficeCellType,
-	"xlt":  _OnlyofficeCellType,
-	"xltx": _OnlyofficeCellType,
-	"xltm": _OnlyofficeCellType,
-	"ods":  _OnlyofficeCellType,
-	"fods": _OnlyofficeCellType,
-	"ots":  _OnlyofficeCellType,
-	"csv":  _OnlyofficeCellType,
-	"pps":  _OnlyofficeSlideType,
-	"ppsx": _OnlyofficeSlideType,
-	"ppsm": _OnlyofficeSlideType,
-	"ppt":  _OnlyofficeSlideType,
-	"pptx": _OnlyofficeSlideType,
-	"pptm": _OnlyofficeSlideType,
-	"pot":  _OnlyofficeSlideType,
-	"potx": _OnlyofficeSlideType,
-	"potm": _OnlyofficeSlideType,
-	"odp":  _OnlyofficeSlideType,
-	"fodp": _OnlyofficeSlideType,
-	"otp":  _OnlyofficeSlideType,
-	"doc":  _OnlyofficeWordType,
-	"docx": _OnlyofficeWordType,
-	"docm": _OnlyofficeWordType,
-	"dot":  _OnlyofficeWordType,
-	"dotx": _OnlyofficeWordType,
-	"dotm": _OnlyofficeWordType,
+var OnlyofficeOOXMLEditableExtensions map[string]string = map[string]string{
+	"doc":   _OnlyofficeWordType,
+	"dot":   _OnlyofficeWordType,
+	"fodt":  _OnlyofficeWordType,
+	"mht":   _OnlyofficeWordType,
+	"xml":   _OnlyofficeWordType,
+	"sxw":   _OnlyofficeWordType,
+	"stw":   _OnlyofficeWordType,
+	"htm":   _OnlyofficeWordType,
+	"mhtml": _OnlyofficeWordType,
+	"wps":   _OnlyofficeWordType,
+	"wpt":   _OnlyofficeWordType,
+	"fods":  _OnlyofficeCellType,
+	"xls":   _OnlyofficeCellType,
+	"xlt":   _OnlyofficeCellType,
+	"sxc":   _OnlyofficeCellType,
+	"et":    _OnlyofficeCellType,
+	"ett":   _OnlyofficeCellType,
+	"xlsb":  _OnlyofficeCellType,
+	"fodp":  _OnlyofficeSlideType,
+	"pot":   _OnlyofficeSlideType,
+	"pps":   _OnlyofficeSlideType,
+	"ppt":   _OnlyofficeSlideType,
+	"sxi":   _OnlyofficeSlideType,
+	"dps":   _OnlyofficeSlideType,
+	"dpt":   _OnlyofficeSlideType,
+}
+
+var OnlyofficeDataLossEditableExtensions map[string]string = map[string]string{
+	"epub": _OnlyofficeWordType,
+	"fb2":  _OnlyofficeWordType,
+	"html": _OnlyofficeWordType,
 	"odt":  _OnlyofficeWordType,
-	"fodt": _OnlyofficeWordType,
 	"ott":  _OnlyofficeWordType,
 	"rtf":  _OnlyofficeWordType,
 	"txt":  _OnlyofficeWordType,
-	"html": _OnlyofficeWordType,
-	"htm":  _OnlyofficeWordType,
-	"mht":  _OnlyofficeWordType,
-	"pdf":  _OnlyofficeWordType,
+	"csv":  _OnlyofficeCellType,
+	"ods":  _OnlyofficeCellType,
+	"ots":  _OnlyofficeCellType,
+	"odp":  _OnlyofficeSlideType,
+	"otp":  _OnlyofficeSlideType,
+}
+
+var OnlyofficeViewOnlyExtensions map[string]string = map[string]string{
 	"djvu": _OnlyofficeWordType,
-	"fb2":  _OnlyofficeWordType,
-	"epub": _OnlyofficeWordType,
+	"oxps": _OnlyofficeWordType,
+	"pdf":  _OnlyofficeWordType,
 	"xps":  _OnlyofficeWordType,
 }
 
@@ -75,6 +94,9 @@ type OnlyofficeFileUtility interface {
 	EscapeFilename(filename string) string
 	IsExtensionSupported(fileExt string) bool
 	IsExtensionEditable(fileExt string) bool
+	IsExtensionViewOnly(fileExt string) bool
+	IsExtensionLossEditable(fileExt string) bool
+	IsExtensionOOXMLConvertable(fileExt string) bool
 	GetFileType(fileExt string) (string, error)
 	GetFileExt(filename string) string
 }
@@ -106,27 +128,65 @@ func (u fileUtility) EscapeFilename(filename string) string {
 }
 
 func (u fileUtility) IsExtensionSupported(fileExt string) bool {
-	_, exists := OnlyofficeFileExtensions[strings.ToLower(fileExt)]
-	if exists {
+	ext := strings.ToLower(fileExt)
+	if _, exists := OnlyofficeDataLossEditableExtensions[ext]; exists {
 		return true
 	}
+
+	if _, exists := OnlyofficeEditableExtensions[ext]; exists {
+		return true
+	}
+
+	if _, exists := OnlyofficeOOXMLEditableExtensions[ext]; exists {
+		return true
+	}
+
+	if _, exists := OnlyofficeViewOnlyExtensions[ext]; exists {
+		return true
+	}
+
 	return false
 }
 
 func (u fileUtility) IsExtensionEditable(fileExt string) bool {
 	_, exists := OnlyofficeEditableExtensions[strings.ToLower(fileExt)]
-	if exists {
-		return true
-	}
-	return false
+	return exists
+}
+
+func (u fileUtility) IsExtensionViewOnly(fileExt string) bool {
+	_, exists := OnlyofficeViewOnlyExtensions[strings.ToLower(fileExt)]
+	return exists
+}
+
+func (u fileUtility) IsExtensionLossEditable(fileExt string) bool {
+	_, exists := OnlyofficeDataLossEditableExtensions[strings.ToLower(fileExt)]
+	return exists
+}
+
+func (u fileUtility) IsExtensionOOXMLConvertable(fileExt string) bool {
+	_, exists := OnlyofficeOOXMLEditableExtensions[strings.ToLower(fileExt)]
+	return exists
 }
 
 func (u fileUtility) GetFileType(fileExt string) (string, error) {
-	fileType, exists := OnlyofficeFileExtensions[strings.ToLower(fileExt)]
-	if !exists {
-		return "", ErrOnlyofficeExtensionNotSupported
+	ext := strings.ToLower(fileExt)
+	if fType, exists := OnlyofficeEditableExtensions[ext]; exists {
+		return fType, nil
 	}
-	return fileType, nil
+
+	if fType, exists := OnlyofficeDataLossEditableExtensions[ext]; exists {
+		return fType, nil
+	}
+
+	if fType, exists := OnlyofficeOOXMLEditableExtensions[ext]; exists {
+		return fType, nil
+	}
+
+	if fType, exists := OnlyofficeViewOnlyExtensions[ext]; exists {
+		return fType, nil
+	}
+
+	return "", ErrOnlyofficeExtensionNotSupported
 }
 
 func (u fileUtility) GetFileExt(filename string) string {
