@@ -40,7 +40,8 @@ type FileController struct {
 }
 
 func NewFileController(
-	jwtManager crypto.JwtManager, fileUtil onlyoffice.OnlyofficeFileUtility, server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
+	jwtManager crypto.JwtManager, fileUtil onlyoffice.OnlyofficeFileUtility,
+	server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
 	credentials *oauth2.Config, client client.Client, logger log.Logger,
 ) FileController {
 	return FileController{
@@ -126,7 +127,7 @@ func (c FileController) BuildDownloadFile() http.HandlerFunc {
 			return
 		}
 
-		gclient := c.credetials.Client(r.Context(), &oauth2.Token{
+		gclient := c.credetials.Client(ctx, &oauth2.Token{
 			AccessToken:  ures.AccessToken,
 			TokenType:    ures.TokenType,
 			RefreshToken: ures.RefreshToken,
@@ -254,7 +255,8 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 			return
 		}
 
-		if c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) {
+		_, gdriveFile := shared.GdriveMimeOnlyofficeExtension[file.MimeType]
+		if c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) || gdriveFile {
 			http.Redirect(rw, r, fmt.Sprintf("/api/editor?state=%s", qstate), http.StatusMovedPermanently)
 			return
 		}
@@ -311,8 +313,12 @@ func (c FileController) BuildConvertFile() http.HandlerFunc {
 			command.NewEditCommand().Execute(rw, r, &body.State)
 			return
 		case "create":
-			command.NewConvertCommand(c.client, c.credetials, c.fileUtil, c.jwtManager, c.server, c.onlyoffice, c.logger).Execute(rw, r, &body.State)
+			command.NewConvertCommand(
+				c.client, c.credetials, c.fileUtil, c.jwtManager, c.server, c.onlyoffice, c.logger,
+			).Execute(rw, r, &body.State)
 			return
+		default:
+			command.NewViewCommand().Execute(rw, r, &body.State)
 		}
 	}
 }
