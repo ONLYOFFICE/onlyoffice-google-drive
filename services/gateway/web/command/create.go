@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/functional"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/onlyoffice"
@@ -46,7 +48,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-type ConvertCommand struct {
+type createCommand struct {
 	client      client.Client
 	credentials *oauth2.Config
 	fileUtil    onlyoffice.OnlyofficeFileUtility
@@ -57,13 +59,13 @@ type ConvertCommand struct {
 	logger      log.Logger
 }
 
-func NewConvertCommand(
+func NewCreateCommand(
 	client client.Client, credentials *oauth2.Config, fileUtil onlyoffice.OnlyofficeFileUtility,
 	jwtManager crypto.JwtManager, server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
-	logger log.Logger,
-) Command {
+	emitter events.Emitter, logger log.Logger,
+) createCommand {
 	sem := semaphore.NewWeighted(int64(onlyoffice.Onlyoffice.Builder.AllowedDownloads))
-	return &ConvertCommand{
+	c := createCommand{
 		client:      client,
 		credentials: credentials,
 		fileUtil:    fileUtil,
@@ -73,6 +75,8 @@ func NewConvertCommand(
 		sem:         sem,
 		logger:      logger,
 	}
+	emitter.On("create", c)
+	return c
 }
 
 type convertInputOutput struct {
@@ -86,7 +90,7 @@ type convertInputOutput struct {
 	DownloadToken string
 }
 
-func (c *ConvertCommand) getFile(input convertInputOutput) (convertInputOutput, error) {
+func (c *createCommand) getFile(input convertInputOutput) (convertInputOutput, error) {
 	gclient := c.credentials.Client(input.Ctx, &oauth2.Token{
 		AccessToken:  input.Ures.AccessToken,
 		TokenType:    input.Ures.TokenType,
@@ -118,7 +122,7 @@ func (c *ConvertCommand) getFile(input convertInputOutput) (convertInputOutput, 
 	}, nil
 }
 
-func (c *ConvertCommand) generateDownloadToken(input convertInputOutput) (convertInputOutput, error) {
+func (c *createCommand) generateDownloadToken(input convertInputOutput) (convertInputOutput, error) {
 	downloadToken := &request.DriveDownloadToken{
 		UserID: input.State.UserID,
 		FileID: input.State.IDS[0],
@@ -138,7 +142,7 @@ func (c *ConvertCommand) generateDownloadToken(input convertInputOutput) (conver
 	}, err
 }
 
-func (c *ConvertCommand) sendConvertRequest(input convertInputOutput) (convertInputOutput, error) {
+func (c *createCommand) sendConvertRequest(input convertInputOutput) (convertInputOutput, error) {
 	var cresp response.ConvertResponse
 	fType, err := c.fileUtil.GetFileType(input.File.FileExtension)
 	if err != nil {
@@ -200,7 +204,7 @@ func (c *ConvertCommand) sendConvertRequest(input convertInputOutput) (convertIn
 	}, nil
 }
 
-func (c *ConvertCommand) uploadConvertedFile(input convertInputOutput) (convertInputOutput, error) {
+func (c *createCommand) uploadConvertedFile(input convertInputOutput) (convertInputOutput, error) {
 	cfile, err := otelhttp.Get(input.Ctx, input.Cres.FileURL)
 	if err != nil {
 		c.logger.Errorf("could not retreive a converted file: %s", err.Error())
@@ -250,10 +254,17 @@ func (c *ConvertCommand) uploadConvertedFile(input convertInputOutput) (convertI
 	}, nil
 }
 
-func (c *ConvertCommand) Execute(rw http.ResponseWriter, r *http.Request, state *request.DriveState) {
+func (c createCommand) Handle(e events.Event) error {
+	rw := e.Get("writer").(http.ResponseWriter)
+	r := e.Get("request").(*http.Request)
+	state := e.Get("state").(*request.DriveState)
+	if rw == nil || r == nil || state == nil {
+		return nil
+	}
+
 	if ok := c.sem.TryAcquire(1); !ok {
 		rw.WriteHeader(http.StatusTooManyRequests)
-		return
+		return errors.New("could not acquire semaphore")
 	}
 
 	defer c.sem.Release(1)
@@ -282,7 +293,7 @@ func (c *ConvertCommand) Execute(rw http.ResponseWriter, r *http.Request, state 
 
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	http.Redirect(
@@ -290,4 +301,6 @@ func (c *ConvertCommand) Execute(rw http.ResponseWriter, r *http.Request, state 
 		fmt.Sprintf("/api/editor?state=%s", url.QueryEscape(string(res.State.ToJSON()))),
 		http.StatusMovedPermanently,
 	)
+
+	return nil
 }

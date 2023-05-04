@@ -46,12 +46,14 @@ func Server() *cli.Command {
 				CONFIG_PATH = c.String("config_path")
 			)
 
-			app := pkg.Bootstrap(
-				CONFIG_PATH, shared.BuildNewCredentialsConfig(CONFIG_PATH),
-				shared.BuildNewGoogleCredentialsConfig, adapter.BuildNewUserAdapter,
-				service.NewUserService, handler.NewUserSelectHandler, handler.NewUserDeleteHandler,
-				handler.NewUserInsertHandler, rpc.NewService, web.NewAuthRPCServer,
-			)
+			app := pkg.NewBootstrapper(
+				CONFIG_PATH, pkg.WithModules(
+					shared.BuildNewCredentialsConfig(CONFIG_PATH),
+					shared.BuildNewGoogleCredentialsConfig, adapter.BuildNewUserAdapter,
+					service.NewUserService, handler.NewUserSelectHandler, handler.NewUserDeleteHandler,
+					handler.NewUserInsertHandler, rpc.NewService, web.NewAuthRPCServer,
+				),
+			).Bootstrap()
 
 			if err := app.Err(); err != nil {
 				return err

@@ -45,14 +45,16 @@ func Server() *cli.Command {
 				CONFIG_PATH = c.String("config_path")
 			)
 
-			app := pkg.Bootstrap(
-				CONFIG_PATH, chttp.NewService, web.NewServer,
-				shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
-				shared.BuildNewCredentialsConfig(CONFIG_PATH),
-				shared.BuildNewGoogleCredentialsConfig,
-				controller.NewCallbackController,
-				worker.NewCallbackWorker,
-			)
+			app := pkg.NewBootstrapper(
+				CONFIG_PATH, pkg.WithModules(
+					chttp.NewService, web.NewServer,
+					shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
+					shared.BuildNewCredentialsConfig(CONFIG_PATH),
+					shared.BuildNewGoogleCredentialsConfig,
+					controller.NewCallbackController,
+					worker.NewCallbackWorker,
+				),
+			).Bootstrap()
 
 			if err := app.Err(); err != nil {
 				return err

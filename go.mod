@@ -159,6 +159,7 @@ require (
 	github.com/go-micro/plugins/v4/broker/memory v1.2.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/gookit/event v1.0.6
 	github.com/hibiken/asynq v0.24.0
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kamva/mgm/v3 v3.5.0

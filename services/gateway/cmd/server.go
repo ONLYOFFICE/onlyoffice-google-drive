@@ -22,6 +22,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg"
 	chttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/command"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/urfave/cli/v2"
@@ -44,12 +45,18 @@ func Server() *cli.Command {
 				CONFIG_PATH = c.String("config_path")
 			)
 
-			app := pkg.Bootstrap(
-				CONFIG_PATH, shared.BuildNewCredentialsConfig(CONFIG_PATH),
-				shared.BuildNewOnlyofficeConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
-				controller.NewAuthController, controller.NewEditorController, controller.NewFileController,
-				chttp.NewService, web.NewServer,
-			)
+			app := pkg.NewBootstrapper(
+				CONFIG_PATH, pkg.WithModules(
+					shared.BuildNewCredentialsConfig(CONFIG_PATH),
+					shared.BuildNewOnlyofficeConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
+					controller.NewAuthController, controller.NewEditorController, controller.NewFileController,
+					chttp.NewService, web.NewServer,
+				), pkg.WithInvokables(
+					command.NewViewCommand,
+					command.NewEditCommand,
+					command.NewCreateCommand,
+				),
+			).Bootstrap()
 
 			if err := app.Err(); err != nil {
 				return err

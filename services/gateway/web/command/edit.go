@@ -23,21 +23,33 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 )
 
-type EditCommand struct {
+type editCommand struct {
 }
 
-func NewEditCommand() Command {
-	return &EditCommand{}
+func NewEditCommand(emitter events.Emitter) editCommand {
+	c := new(editCommand)
+	emitter.On("edit", c)
+	return *c
 }
 
-func (c *EditCommand) Execute(rw http.ResponseWriter, r *http.Request, state *request.DriveState) {
+func (c editCommand) Handle(e events.Event) error {
+	rw := e.Get("writer").(http.ResponseWriter)
+	r := e.Get("request").(*http.Request)
+	state := e.Get("state").(*request.DriveState)
+	if rw == nil || r == nil || state == nil {
+		return nil
+	}
+
 	state.ForceEdit = true
 	http.Redirect(
 		rw, r,
 		fmt.Sprintf("/api/editor?state=%s", url.QueryEscape(string(state.ToJSON()))),
 		http.StatusMovedPermanently,
 	)
+
+	return nil
 }

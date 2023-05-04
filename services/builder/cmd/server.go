@@ -44,11 +44,13 @@ func Server() *cli.Command {
 				CONFIG_PATH = c.String("config_path")
 			)
 
-			app := pkg.Bootstrap(
-				CONFIG_PATH, shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
-				shared.BuildNewCredentialsConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
-				handler.NewConfigHandler, rpc.NewService, web.NewConfigRPCServer,
-			)
+			app := pkg.NewBootstrapper(
+				CONFIG_PATH, pkg.WithModules(
+					shared.BuildNewOnlyofficeConfig(CONFIG_PATH),
+					shared.BuildNewCredentialsConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
+					handler.NewConfigHandler, rpc.NewService, web.NewConfigRPCServer,
+				),
+			).Bootstrap()
 
 			if err := app.Err(); err != nil {
 				return err

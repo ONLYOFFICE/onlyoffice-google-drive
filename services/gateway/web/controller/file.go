@@ -30,9 +30,9 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/onlyoffice"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/command"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
@@ -54,13 +54,14 @@ type FileController struct {
 	onlyoffice *shared.OnlyofficeConfig
 	credetials *oauth2.Config
 	client     client.Client
+	emitter    events.Emitter
 	logger     log.Logger
 }
 
 func NewFileController(
 	jwtManager crypto.JwtManager, fileUtil onlyoffice.OnlyofficeFileUtility,
 	server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
-	credentials *oauth2.Config, client client.Client, logger log.Logger,
+	credentials *oauth2.Config, client client.Client, emitter events.Emitter, logger log.Logger,
 ) FileController {
 	return FileController{
 		fileUtil:   fileUtil,
@@ -70,6 +71,7 @@ func NewFileController(
 		onlyoffice: onlyoffice,
 		credetials: credentials,
 		client:     client,
+		emitter:    emitter,
 		logger:     logger,
 	}
 }
@@ -323,20 +325,10 @@ func (c FileController) BuildConvertFile() http.HandlerFunc {
 			return
 		}
 
-		switch body.Action {
-		case "view":
-			command.NewViewCommand().Execute(rw, r, &body.State)
-			return
-		case "edit":
-			command.NewEditCommand().Execute(rw, r, &body.State)
-			return
-		case "create":
-			command.NewConvertCommand(
-				c.client, c.credetials, c.fileUtil, c.jwtManager, c.server, c.onlyoffice, c.logger,
-			).Execute(rw, r, &body.State)
-			return
-		default:
-			command.NewViewCommand().Execute(rw, r, &body.State)
-		}
+		c.emitter.Fire(body.Action, map[string]any{
+			"writer":  rw,
+			"request": r,
+			"state":   &body.State,
+		})
 	}
 }
