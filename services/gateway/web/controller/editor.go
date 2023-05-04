@@ -25,9 +25,10 @@ import (
 var (
 	_, b, _, _  = runtime.Caller(0)
 	basepath    = filepath.Dir(b)
-	editorPage  = template.Must(template.ParseFiles(path.Join(basepath, "../", "templates", "editor.html")))
-	errorPage   = template.Must(template.ParseFiles(path.Join(basepath, "../", "templates", "error.html")))
-	convertPage = template.Must(template.ParseFiles(path.Join(basepath, "../", "templates", "convert.html")))
+	templates   = path.Join(basepath, "../", "templates")
+	editorPage  = template.Must(template.ParseFiles(path.Join(templates, "editor.html")))
+	errorPage   = template.Must(template.ParseFiles(path.Join(templates, "error.html")))
+	convertPage = template.Must(template.ParseFiles(path.Join(templates, "convert.html"), path.Join(templates, "error.html")))
 )
 
 type EditorController struct {
