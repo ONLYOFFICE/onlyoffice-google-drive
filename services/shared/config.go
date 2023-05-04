@@ -158,6 +158,7 @@ func BuildNewOnlyofficeConfig(path string) func() (*OnlyofficeConfig, error) {
 		var config OnlyofficeConfig
 		config.Onlyoffice.Callback.MaxSize = 20000000
 		config.Onlyoffice.Callback.UploadTimeout = 120
+		config.Onlyoffice.Builder.AllowedDownloads = 10
 		if path != "" {
 			file, err := os.Open(path)
 			if err != nil {
