@@ -19,10 +19,12 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
@@ -43,6 +45,7 @@ type AuthController struct {
 	client     client.Client
 	jwtManager crypto.JwtManager
 	store      *sessions.CookieStore
+	config     *config.ServerConfig
 	oauth      *oauth2.Config
 	logger     log.Logger
 }
@@ -50,6 +53,7 @@ type AuthController struct {
 func NewAuthController(
 	client client.Client,
 	jwtManager crypto.JwtManager,
+	config *config.ServerConfig,
 	oauth *oauth2.Config,
 	logger log.Logger,
 ) AuthController {
@@ -57,6 +61,7 @@ func NewAuthController(
 		client:     client,
 		jwtManager: jwtManager,
 		store:      sessions.NewCookieStore([]byte(oauth.ClientSecret)),
+		config:     config,
 		oauth:      oauth,
 		logger:     logger,
 	}
@@ -92,15 +97,16 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 				return nil, err
 			}
 
-			if err := c.client.Publish(r.Context(), c.client.NewMessage("gdrive-insert-auth", response.UserResponse{
+			var resp interface{}
+			if err := c.client.Call(r.Context(), c.client.NewRequest(fmt.Sprintf("%s:auth", c.config.Namespace), "UserInsertHandler.InsertUser", response.UserResponse{
 				ID:           uinfo.Id,
 				AccessToken:  token.AccessToken,
 				RefreshToken: token.RefreshToken,
 				TokenType:    token.TokenType,
 				Scope:        strings.Join([]string{drive.DriveMetadataReadonlyScope, drive.DriveFileScope, drive.DriveReadonlyScope, shared.DriveInstall}, " "),
 				Expiry:       token.Expiry.UTC().Format(time.RFC3339),
-			})); err != nil {
-				c.logger.Errorf("insert user error: %s", err.Error())
+			}), &resp); err != nil {
+				c.logger.Errorf("could not insert a new user: %s", err.Error())
 				return nil, err
 			}
 

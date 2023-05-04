@@ -25,7 +25,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/service"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/handler"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/message"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/urfave/cli/v2"
 )
@@ -51,7 +50,7 @@ func Server() *cli.Command {
 				CONFIG_PATH, shared.BuildNewCredentialsConfig(CONFIG_PATH),
 				shared.BuildNewGoogleCredentialsConfig, adapter.BuildNewUserAdapter,
 				service.NewUserService, handler.NewUserSelectHandler, handler.NewUserDeleteHandler,
-				message.BuildInsertMessageHandler, rpc.NewService, web.NewAuthRPCServer,
+				handler.NewUserInsertHandler, rpc.NewService, web.NewAuthRPCServer,
 			)
 
 			if err := app.Err(); err != nil {

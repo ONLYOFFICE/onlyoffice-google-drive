@@ -21,17 +21,16 @@ package web
 import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/rpc"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/handler"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/message"
 )
 
 type AuthRPCServer struct {
-	insertHandler message.InsertMessageHandler
+	insertHandler handler.UserInsertHandler
 	selectHandler handler.UserSelectHandler
 	deleteHandler handler.UserDeleteHandler
 }
 
 func NewAuthRPCServer(
-	insertHandler message.InsertMessageHandler,
+	insertHandler handler.UserInsertHandler,
 	selectHandler handler.UserSelectHandler,
 	deleteHandler handler.UserDeleteHandler,
 ) rpc.RPCEngine {
@@ -43,14 +42,9 @@ func NewAuthRPCServer(
 }
 
 func (a AuthRPCServer) BuildMessageHandlers() []rpc.RPCMessageHandler {
-	return []rpc.RPCMessageHandler{
-		{
-			Topic:   "gdrive-insert-auth",
-			Handler: a.insertHandler.GetHandler(),
-		},
-	}
+	return nil
 }
 
 func (a AuthRPCServer) BuildHandlers() []interface{} {
-	return []interface{}{a.selectHandler, a.deleteHandler}
+	return []interface{}{a.selectHandler, a.deleteHandler, a.insertHandler}
 }

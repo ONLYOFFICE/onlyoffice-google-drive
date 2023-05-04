@@ -16,7 +16,7 @@
  *
  */
 
-package message
+package handler
 
 import (
 	"context"
@@ -24,34 +24,33 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/port"
-	"github.com/mitchellh/mapstructure"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 )
 
-type InsertMessageHandler struct {
+type UserInsertHandler struct {
 	service port.UserAccessService
 	logger  log.Logger
 }
 
-func BuildInsertMessageHandler(service port.UserAccessService, logger log.Logger) InsertMessageHandler {
-	return InsertMessageHandler{
+func NewUserInsertHandler(service port.UserAccessService, logger log.Logger) UserInsertHandler {
+	return UserInsertHandler{
 		service: service,
 		logger:  logger,
 	}
 }
 
-func (i InsertMessageHandler) GetHandler() func(context.Context, interface{}) error {
-	return func(ctx context.Context, payload interface{}) error {
-		var user domain.UserAccess
-		if err := mapstructure.Decode(payload, &user); err != nil {
-			i.logger.Errorf("could not decode user: %s", err.Error())
-			return err
-		}
-
-		if _, err := i.service.UpdateUser(ctx, user); err != nil {
-			i.logger.Errorf("could not update user: %s", err.Error())
-			return err
-		}
-
-		return nil
+func (i UserInsertHandler) InsertUser(ctx context.Context, req response.UserResponse, res *domain.UserAccess) error {
+	if _, err := i.service.UpdateUser(ctx, domain.UserAccess{
+		ID:           req.ID,
+		AccessToken:  req.AccessToken,
+		RefreshToken: req.RefreshToken,
+		TokenType:    req.TokenType,
+		Scope:        req.Scope,
+		Expiry:       req.Expiry,
+	}); err != nil {
+		i.logger.Errorf("could not update user: %s", err.Error())
+		return err
 	}
+
+	return nil
 }

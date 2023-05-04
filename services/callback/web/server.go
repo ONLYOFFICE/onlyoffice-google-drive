@@ -25,7 +25,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/worker"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web/controller"
 	workerh "github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web/worker"
-	"github.com/gin-gonic/gin"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
@@ -50,8 +49,6 @@ func NewServer(
 	enqueuer worker.BackgroundEnqueuer,
 	callbackController controller.CallbackController,
 ) chttp.ServerEngine {
-	gin.SetMode(gin.ReleaseMode)
-
 	service := CallbackService{
 		mux:               chi.NewRouter(),
 		worker:            wrkr,
