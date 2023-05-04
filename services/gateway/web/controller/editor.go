@@ -6,10 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
-	"path/filepath"
-	"runtime"
-	"text/template"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
@@ -20,15 +16,6 @@ import (
 	"github.com/gorilla/sessions"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
-)
-
-var (
-	_, b, _, _  = runtime.Caller(0)
-	basepath    = filepath.Dir(b)
-	templates   = path.Join(basepath, "../", "templates")
-	editorPage  = template.Must(template.ParseFiles(path.Join(templates, "editor.html")))
-	errorPage   = template.Must(template.ParseFiles(path.Join(templates, "error.html")))
-	convertPage = template.Must(template.ParseFiles(path.Join(templates, "convert.html"), path.Join(templates, "error.html")))
 )
 
 type EditorController struct {
