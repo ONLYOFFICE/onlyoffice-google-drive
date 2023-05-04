@@ -41,6 +41,7 @@ import (
 	"go-micro.dev/v4/client"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/semaphore"
 	"google.golang.org/api/drive/v2"
 	"google.golang.org/api/option"
 )
@@ -52,6 +53,7 @@ type ConvertCommand struct {
 	jwtManager  crypto.JwtManager
 	server      *config.ServerConfig
 	onlyoffice  *shared.OnlyofficeConfig
+	sem         *semaphore.Weighted
 	logger      log.Logger
 }
 
@@ -60,6 +62,7 @@ func NewConvertCommand(
 	jwtManager crypto.JwtManager, server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
 	logger log.Logger,
 ) Command {
+	sem := semaphore.NewWeighted(int64(onlyoffice.Onlyoffice.Builder.AllowedDownloads))
 	return &ConvertCommand{
 		client:      client,
 		credentials: credentials,
@@ -67,6 +70,7 @@ func NewConvertCommand(
 		jwtManager:  jwtManager,
 		server:      server,
 		onlyoffice:  onlyoffice,
+		sem:         sem,
 		logger:      logger,
 	}
 }
@@ -247,6 +251,12 @@ func (c *ConvertCommand) uploadConvertedFile(input convertInputOutput) (convertI
 }
 
 func (c *ConvertCommand) Execute(rw http.ResponseWriter, r *http.Request, state *request.DriveState) {
+	if ok := c.sem.TryAcquire(1); !ok {
+		rw.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+
+	defer c.sem.Release(1)
 	res, err := functional.NewPipe[convertInputOutput]().
 		Next(func(input convertInputOutput) (convertInputOutput, error) {
 			var ures response.UserResponse
