@@ -6,7 +6,9 @@ import (
 	"go-micro.dev/v4/registry"
 )
 
-func NewClient(registry registry.Registry, broker messaging.BrokerWithOptions) client.Client {
+func NewClient(
+	registry registry.Registry, broker messaging.BrokerWithOptions,
+) client.Client {
 	return client.NewClient(
 		client.Registry(registry),
 		client.Broker(broker.Broker),

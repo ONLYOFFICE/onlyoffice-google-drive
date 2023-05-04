@@ -27,6 +27,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/client"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/messaging"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/onlyoffice"
@@ -40,7 +41,17 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Bootstrap(path string, extras ...interface{}) *fx.App {
+type bootstrapper struct {
+	invokables []interface{}
+}
+
+func NewBootstrapper(invokables ...interface{}) bootstrapper {
+	return bootstrapper{
+		invokables: invokables,
+	}
+}
+
+func (b bootstrapper) Bootstrap(path string, extras ...interface{}) *fx.App {
 	builder := config.BuildNewServerConfig(path)
 	sconf, err := builder()
 	if err != nil {
@@ -76,12 +87,14 @@ func Bootstrap(path string, extras ...interface{}) *fx.App {
 		fx.Provide(trace.NewTracer),
 		fx.Provide(worker.NewBackgroundWorker),
 		fx.Provide(worker.NewBackgroundEnqueuer),
+		fx.Provide(events.NewEmitter),
 		fx.Provide(repl.NewService),
 		fx.Provide(crypto.NewEncryptor),
 		fx.Provide(crypto.NewJwtManager),
 		fx.Provide(crypto.NewHasher),
 		fx.Provide(onlyoffice.NewOnlyofficeFileUtility),
 		fx.Provide(extras...),
+		fx.Invoke(b.invokables...),
 		fx.Invoke(func(lifecycle fx.Lifecycle, service micro.Service, repl *http.Server, logger log.Logger) {
 			lifecycle.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
