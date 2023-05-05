@@ -166,6 +166,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mileusna/useragent v1.2.1
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/nicksnyder/go-i18n/v2 v2.2.1
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.41.1

@@ -227,12 +227,12 @@
             </svg>
         </div>
         <div class="container_text">
-            <p class="container_text_main">Sorry, the document cannot be opened</p>
-            <p class="container_text_subtext">Please try again</p>
+            <p class="container_text_main">{{.errorMain}}</p>
+            <p class="container_text_subtext">{{.errorSubtext}}</p>
         </div>
         <div class="container_actions">
             <button class="container_actions_button" onclick="window.location.reload()">
-                Reload
+                {{.reloadButton}}
             </button>
         </div>
     </div>

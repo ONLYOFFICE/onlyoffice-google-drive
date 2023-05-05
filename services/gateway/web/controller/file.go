@@ -39,10 +39,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/api/drive/v2"
+	goauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
 
@@ -195,12 +197,17 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
 		qstate := r.URL.Query().Get("state")
+		errMsg := map[string]interface{}{
+			"errorMain":    "Sorry, the document cannot be opened",
+			"errorSubtext": "Please try again",
+			"reloadButton": "Reload",
+		}
 		state := request.DriveState{
 			UserAgent: r.UserAgent(),
 		}
 
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			errorPage.Execute(rw, nil)
+			errorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -233,15 +240,7 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 		})
 
 		if err != nil {
-			errorPage.Execute(rw, nil)
-			return
-		}
-
-		session.Values["token"] = signature
-		session.Options.MaxAge = 60 * 60 * 23 * 7
-		if err := session.Save(r, rw); err != nil {
-			c.logger.Errorf("could not save a new session cookie: %s", err.Error())
-			errorPage.Execute(rw, nil)
+			errorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -251,7 +250,7 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 			fmt.Sprint(state.UserID),
 		), &ures); err != nil {
 			c.logger.Debugf("could not get user %s access info: %s", state.UserID, err.Error())
-			errorPage.Execute(rw, nil)
+			errorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -261,17 +260,51 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 			RefreshToken: ures.RefreshToken,
 		})
 
+		userService, err := goauth.NewService(r.Context(), option.WithHTTPClient(gclient))
+		if err != nil {
+			errorPage.Execute(rw, errMsg)
+			return
+		}
+
+		usr, err := userService.Userinfo.Get().Do()
+		if err != nil {
+			errorPage.Execute(rw, errMsg)
+			return
+		}
+
+		session.Values["token"] = signature
+		session.Values["locale"] = usr.Locale
+		session.Options.MaxAge = 60 * 60 * 23 * 7
+		if err := session.Save(r, rw); err != nil {
+			c.logger.Errorf("could not save a new session cookie: %s", err.Error())
+			errorPage.Execute(rw, errMsg)
+			return
+		}
+
+		loc := i18n.NewLocalizer(bundle, usr.Locale)
+		errMsg = map[string]interface{}{
+			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "errorMain",
+			}),
+			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "errorSubtext",
+			}),
+			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "reloadButton",
+			}),
+		}
+
 		srv, err := drive.NewService(r.Context(), option.WithHTTPClient(gclient))
 		if err != nil {
 			c.logger.Errorf("Unable to retrieve drive service: %v", err)
-			rw.WriteHeader(http.StatusInternalServerError)
+			errorPage.Execute(rw, errMsg)
 			return
 		}
 
 		file, err := srv.Files.Get(state.IDS[0]).Do()
 		if err != nil {
 			c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
-			rw.WriteHeader(http.StatusInternalServerError)
+			errorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -285,6 +318,48 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"OOXML":          c.fileUtil.IsExtensionOOXMLConvertable(file.FileExtension),
 			"LossEdit":       c.fileUtil.IsExtensionLossEditable(file.FileExtension),
+			"openOnlyoffice": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "openOnlyoffice",
+			}),
+			"cannotOpen": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "cannotOpen",
+			}),
+			"selectAction": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "selectAction",
+			}),
+			"openView": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "openView",
+			}),
+			"createOOXML": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createOOXML",
+			}),
+			"editCopy": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "editCopy",
+			}),
+			"openEditing": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "openEditing",
+			}),
+			"moreInfo": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "moreInfo",
+			}),
+			"dataRestrictions": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "dataRestrictions",
+			}),
+			"openButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "openButton",
+			}),
+			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "cancelButton",
+			}),
+			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "errorMain",
+			}),
+			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "errorSubtext",
+			}),
+			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "reloadButton",
+			}),
 		})
 	}
 }

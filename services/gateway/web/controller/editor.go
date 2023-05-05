@@ -14,6 +14,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
 )
@@ -53,7 +54,11 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 		}
 
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			errorPage.Execute(rw, nil)
+			errorPage.Execute(rw, map[string]interface{}{
+				"errorMain":    "Sorry, the document cannot be opened",
+				"errorSubtext": "Please try again",
+				"reloadButton": "Reload",
+			})
 			return
 		}
 
@@ -78,6 +83,8 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 			return
 		}
 
+		val, _ = session.Values["locale"].(string)
+		loc := i18n.NewLocalizer(bundle, val)
 		var resp response.BuildConfigResponse
 		if err := c.client.Call(r.Context(),
 			c.client.NewRequest(fmt.Sprintf("%s:builder", c.server.Namespace), "ConfigHandler.BuildConfig", state),
@@ -96,7 +103,17 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 			}
 
 			c.logger.Errorf("build config micro error: %s", microErr.Detail)
-			errorPage.Execute(rw, nil)
+			errorPage.Execute(rw, map[string]interface{}{
+				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "errorMain",
+				}),
+				"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "errorSubtext",
+				}),
+				"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "reloadButton",
+				}),
+			})
 			return
 		}
 
@@ -106,6 +123,9 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", resp.ServerURL),
 			"config":  string(resp.ToJSON()),
 			"docType": resp.DocumentType,
+			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "cancelButton",
+			}),
 		})
 	}
 }

@@ -145,27 +145,27 @@
             <div x-show="!loading && !error">
                 <h2
                     style="font-family: Open Sans; font-weight: 700; font-size: 21px; line-height: 28px; padding-left: 1rem;">
-                    Open with ONLYOFFICE</h2>
+                    {{.openOnlyoffice}}</h2>
                 <div style="width: 375px;">
                     <hr class="solid" style="margin-bottom: 0.7rem;" />
                     <div style="padding-left: 1rem; padding-right: 1rem;">
-                        <p class="text">This file type can not be opened correctly.</p>
-                        <p class="text">Please select the action:</p>
+                        <p class="text">{{.cannotOpen}}</p>
+                        <p class="text">{{.selectAction}}</p>
                         <form style="margin-top: 0.7rem; margin-bottom: 1rem;" @submit.prevent="submit">
                             <div style="margin-bottom: 0.75rem;">
                                 <input type="radio" id="view" name="editor_action" value="view"
                                     style="margin: 0 0.2rem 0 0;" x-model="action" :disabled="loading">
-                                <label for="view">Open the file for viewing only</label>
+                                <label for="view">{{.openView}}</label>
                                 <br />
                             </div>
                             {{if .OOXML}}
                             <div style="margin-bottom: 0.75rem;">
                                 <input type="radio" id="create" name="editor_action" value="create"
                                     style="margin: 0 0.2rem 0 0;" x-model="action" :disabled="loading">
-                                <label for="create">Create an OOXML file copy </label>
+                                <label for="create">{{.createOOXML}}</label>
                                 <br />
                                 <div style="padding-left: 1.25rem;">
-                                    <span>Edit only the file copy, not the original file</span>
+                                    <span>{{.editCopy}}</span>
                                 </div>
                             </div>
                             {{end}}
@@ -173,7 +173,7 @@
                             <div>
                                 <input type="radio" id="edit" name="editor_action" value="edit"
                                     style="margin: 0 0.2rem 0 0;" x-model="action" :disabled="loading">
-                                <label for="edit">Open the file for editing</label>
+                                <label for="edit">{{.openEditing}}</label>
                                 <span style="cursor: pointer;" x-data="{ tooltip: false }"
                                     x-on:mouseover="tooltip = true" x-on:mouseleave="tooltip = false">
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
@@ -186,7 +186,7 @@
                                         <div x-show="tooltip" class="tooltip">
                                             <div
                                                 style="padding: 10px; display: flex; justify-content: center; align-items: center;">
-                                                <b style="color: black;">More info:&nbsp;</b>
+                                                <b style="color: black;">{{.moreInfo}}&nbsp;</b>
                                                 <a style="text-decoration: underline; color: black;"
                                                     href="https://api.onlyoffice.com/editors/nextcloud#editable">
                                                     https://api.onlyoffice.com/editors/nextcloud#editable
@@ -197,8 +197,7 @@
                                 </span>
                                 <br />
                                 <div style="padding-left: 1.25rem;">
-                                    <span>Due to format restrictions, the data might be lost when saving to the original
-                                        file</span>
+                                    <span>{{.dataRestrictions}}</span>
                                 </div>
                             </div>
                             {{end}}
@@ -206,9 +205,9 @@
                                 style="display: flex; justify-content: center; align-items: center; margin: 6px; padding-top: 1rem;">
                                 <button type="submit" class="button button_primary"
                                     style="flex-grow: 2; flex-basis: 0; margin-right: 6px;"
-                                    :disabled="!action || loading">Open</button>
+                                    :disabled="!action || loading">{{.openButton}}</button>
                                 <button class="button button_secondary" style="flex-grow: 1; flex-basis: 0;"
-                                    onclick="window.close();" :disabled="loading">Cancel</button>
+                                    onclick="window.close();" :disabled="loading">{{.cancelButton}}</button>
                             </div>
                             {{ .csrfField }}
                         </form>
@@ -216,7 +215,7 @@
                 </div>
             </div>
             <div x-show="!loading && error">
-                {{template "error"}}
+                {{template "error" .}}
             </div>
             <div x-show="loading && !error">
                 {{template "spinner"}}
