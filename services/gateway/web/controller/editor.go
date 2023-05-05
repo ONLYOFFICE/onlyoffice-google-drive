@@ -54,11 +54,7 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 		}
 
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			errorPage.Execute(rw, map[string]interface{}{
-				"errorMain":    "Sorry, the document cannot be opened",
-				"errorSubtext": "Please try again",
-				"reloadButton": "Reload",
-			})
+			http.Redirect(rw, r, "https://drive.google.com/", http.StatusMovedPermanently)
 			return
 		}
 
