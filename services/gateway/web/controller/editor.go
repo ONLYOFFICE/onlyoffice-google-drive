@@ -10,6 +10,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 	"github.com/golang-jwt/jwt/v5"
@@ -80,7 +81,7 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 		}
 
 		val, _ = session.Values["locale"].(string)
-		loc := i18n.NewLocalizer(bundle, val)
+		loc := i18n.NewLocalizer(embeddable.Bundle, val)
 		var resp response.BuildConfigResponse
 		if err := c.client.Call(r.Context(),
 			c.client.NewRequest(fmt.Sprintf("%s:builder", c.server.Namespace), "ConfigHandler.BuildConfig", state),
@@ -99,7 +100,7 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 			}
 
 			c.logger.Errorf("build config micro error: %s", microErr.Detail)
-			errorPage.Execute(rw, map[string]interface{}{
+			embeddable.ErrorPage.Execute(rw, map[string]interface{}{
 				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "errorMain",
 				}),
@@ -115,7 +116,7 @@ func (c EditorController) BuildGetEditor() http.HandlerFunc {
 
 		c.logger.Debug("successfully saved a new session cookie")
 
-		editorPage.Execute(rw, map[string]interface{}{
+		embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", resp.ServerURL),
 			"config":  string(resp.ToJSON()),
 			"docType": resp.DocumentType,

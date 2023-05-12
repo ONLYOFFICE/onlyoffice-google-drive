@@ -33,6 +33,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/onlyoffice"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
@@ -207,7 +208,7 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -240,7 +241,7 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 		})
 
 		if err != nil {
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -250,7 +251,7 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 			fmt.Sprint(state.UserID),
 		), &ures); err != nil {
 			c.logger.Debugf("could not get user %s access info: %s", state.UserID, err.Error())
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -262,13 +263,13 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 
 		userService, err := goauth.NewService(r.Context(), option.WithHTTPClient(gclient))
 		if err != nil {
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
 		usr, err := userService.Userinfo.Get().Do()
 		if err != nil {
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -277,11 +278,11 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 		session.Options.MaxAge = 60 * 60 * 23 * 7
 		if err := session.Save(r, rw); err != nil {
 			c.logger.Errorf("could not save a new session cookie: %s", err.Error())
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
-		loc := i18n.NewLocalizer(bundle, usr.Locale)
+		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 		errMsg = map[string]interface{}{
 			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "errorMain",
@@ -297,14 +298,14 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 		srv, err := drive.NewService(r.Context(), option.WithHTTPClient(gclient))
 		if err != nil {
 			c.logger.Errorf("Unable to retrieve drive service: %v", err)
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
 		file, err := srv.Files.Get(state.IDS[0]).Do()
 		if err != nil {
 			c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
-			errorPage.Execute(rw, errMsg)
+			embeddable.ErrorPage.Execute(rw, errMsg)
 			return
 		}
 
@@ -314,7 +315,7 @@ func (c FileController) BuildConvertPage() http.HandlerFunc {
 			return
 		}
 
-		convertPage.Execute(rw, map[string]interface{}{
+		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"OOXML":          c.fileUtil.IsExtensionOOXMLConvertable(file.FileExtension),
 			"LossEdit":       c.fileUtil.IsExtensionLossEditable(file.FileExtension),
