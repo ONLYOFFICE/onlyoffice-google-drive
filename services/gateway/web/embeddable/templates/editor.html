@@ -120,26 +120,9 @@
       docEditor.destroyEditor();
     };
 
-    var onRequestSaveAs = async function (event) {
-      await fetch(`/api/convert${window.location.search}`, {
-        method: "POST",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: event.data.title,
-          fileType: event.data.fileType,
-          downloadURL: event.data.url,
-        })
-      });
-    };
-
-
     var events = {
       "onAppReady": onAppReady,
       "onRequestClose": onRequestClose,
-      "onRequestSaveAs": onRequestSaveAs,
     };
 
     var config = {{ .config }};
