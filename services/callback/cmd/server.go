@@ -23,7 +23,6 @@ import (
 	chttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web/controller"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web/worker"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/urfave/cli/v2"
 )
@@ -52,7 +51,6 @@ func Server() *cli.Command {
 					shared.BuildNewCredentialsConfig(CONFIG_PATH),
 					shared.BuildNewGoogleCredentialsConfig,
 					controller.NewCallbackController,
-					worker.NewCallbackWorker,
 				),
 			).Bootstrap()
 
