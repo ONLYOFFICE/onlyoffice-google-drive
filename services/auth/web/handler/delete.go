@@ -20,6 +20,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/port"
@@ -45,11 +46,15 @@ func NewUserDeleteHandler(
 }
 
 func (u UserDeleteHandler) DeleteUser(ctx context.Context, uid *string, res *interface{}) error {
-	u.logger.Debugf("removing user %s", *uid)
-	if err := u.service.DeleteUser(ctx, *uid); err != nil {
-		u.logger.Debugf("could not delete user %s: %s", *uid, err.Error())
-		return err
-	}
+	_, err, _ := group.Do(fmt.Sprintf("remove-%s", *uid), func() (interface{}, error) {
+		u.logger.Debugf("removing user %s", *uid)
+		if err := u.service.DeleteUser(ctx, *uid); err != nil {
+			u.logger.Debugf("could not delete user %s: %s", *uid, err.Error())
+			return nil, err
+		}
 
-	return nil
+		return nil, nil
+	})
+
+	return err
 }

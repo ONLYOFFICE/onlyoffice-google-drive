@@ -20,6 +20,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/domain"
@@ -40,17 +41,23 @@ func NewUserInsertHandler(service port.UserAccessService, logger log.Logger) Use
 }
 
 func (i UserInsertHandler) InsertUser(ctx context.Context, req response.UserResponse, res *domain.UserAccess) error {
-	if _, err := i.service.UpdateUser(ctx, domain.UserAccess{
-		ID:           req.ID,
-		AccessToken:  req.AccessToken,
-		RefreshToken: req.RefreshToken,
-		TokenType:    req.TokenType,
-		Scope:        req.Scope,
-		Expiry:       req.Expiry,
-	}); err != nil {
-		i.logger.Errorf("could not update user: %s", err.Error())
-		return err
-	}
+	_, err, _ := group.Do(fmt.Sprintf("insert-%s", req.ID), func() (interface{}, error) {
+		usr, err := i.service.UpdateUser(ctx, domain.UserAccess{
+			ID:           req.ID,
+			AccessToken:  req.AccessToken,
+			RefreshToken: req.RefreshToken,
+			TokenType:    req.TokenType,
+			Scope:        req.Scope,
+			Expiry:       req.Expiry,
+		})
 
-	return nil
+		if err != nil {
+			i.logger.Errorf("could not update user: %s", err.Error())
+			return nil, err
+		}
+
+		return usr, nil
+	})
+
+	return err
 }
