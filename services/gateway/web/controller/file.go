@@ -20,7 +20,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,51 +29,37 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/onlyoffice"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/gorilla/csrf"
-	"github.com/gorilla/sessions"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/api/drive/v2"
-	goauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
 
 type FileController struct {
+	client     client.Client
 	jwtManager crypto.JwtManager
-	fileUtil   onlyoffice.OnlyofficeFileUtility
-	store      *sessions.CookieStore
 	server     *config.ServerConfig
 	onlyoffice *shared.OnlyofficeConfig
 	credetials *oauth2.Config
-	client     client.Client
-	emitter    events.Emitter
 	logger     log.Logger
 }
 
 func NewFileController(
-	jwtManager crypto.JwtManager, fileUtil onlyoffice.OnlyofficeFileUtility,
+	client client.Client, jwtManager crypto.JwtManager,
 	server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
-	credentials *oauth2.Config, client client.Client, emitter events.Emitter, logger log.Logger,
+	credentials *oauth2.Config, logger log.Logger,
 ) FileController {
 	return FileController{
-		fileUtil:   fileUtil,
-		server:     server,
-		store:      sessions.NewCookieStore([]byte(credentials.ClientSecret)),
+		client:     client,
 		jwtManager: jwtManager,
+		server:     server,
 		onlyoffice: onlyoffice,
 		credetials: credentials,
-		client:     client,
-		emitter:    emitter,
 		logger:     logger,
 	}
 }
@@ -137,7 +122,7 @@ func (c FileController) BuildDownloadFile() http.HandlerFunc {
 		default:
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Minute)
 		defer cancel()
 
 		var ures response.UserResponse
@@ -191,220 +176,5 @@ func (c FileController) BuildDownloadFile() http.HandlerFunc {
 			defer resp.Body.Close()
 			io.Copy(rw, resp.Body)
 		}
-	}
-}
-
-func (c FileController) BuildConvertPage() http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Set("Content-Type", "text/html")
-		qstate := r.URL.Query().Get("state")
-		errMsg := map[string]interface{}{
-			"errorMain":    "Sorry, the document cannot be opened",
-			"errorSubtext": "Please try again",
-			"reloadButton": "Reload",
-		}
-		state := request.DriveState{
-			UserAgent: r.UserAgent(),
-		}
-
-		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		session, _ := c.store.Get(r, state.UserID)
-		val, ok := session.Values["token"].(string)
-		if !ok {
-			c.logger.Debugf("could not cast a session jwt")
-			session.Options.MaxAge = -1
-			session.Save(r, rw)
-			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
-		}
-
-		var token jwt.RegisteredClaims
-		if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil {
-			c.logger.Warnf("could not verify a jwt: %s", err.Error())
-			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
-		}
-
-		c.logger.Debugf("jwt %s is valid", val)
-
-		signature, err := c.jwtManager.Sign(c.credetials.ClientSecret, jwt.RegisteredClaims{
-			ID:        state.UserID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)),
-		})
-
-		if err != nil {
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		var ures response.UserResponse
-		if err := c.client.Call(r.Context(), c.client.NewRequest(
-			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
-			fmt.Sprint(state.UserID),
-		), &ures); err != nil {
-			c.logger.Debugf("could not get user %s access info: %s", state.UserID, err.Error())
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		gclient := c.credetials.Client(r.Context(), &oauth2.Token{
-			AccessToken:  ures.AccessToken,
-			TokenType:    ures.TokenType,
-			RefreshToken: ures.RefreshToken,
-		})
-
-		userService, err := goauth.NewService(r.Context(), option.WithHTTPClient(gclient))
-		if err != nil {
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		usr, err := userService.Userinfo.Get().Do()
-		if err != nil {
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		session.Values["token"] = signature
-		session.Values["locale"] = usr.Locale
-		session.Options.MaxAge = 60 * 60 * 23 * 7
-		if err := session.Save(r, rw); err != nil {
-			c.logger.Errorf("could not save a new session cookie: %s", err.Error())
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		errMsg = map[string]interface{}{
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
-		}
-
-		srv, err := drive.NewService(r.Context(), option.WithHTTPClient(gclient))
-		if err != nil {
-			c.logger.Errorf("Unable to retrieve drive service: %v", err)
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		file, err := srv.Files.Get(state.IDS[0]).Do()
-		if err != nil {
-			c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
-			embeddable.ErrorPage.Execute(rw, errMsg)
-			return
-		}
-
-		_, gdriveFile := shared.GdriveMimeOnlyofficeExtension[file.MimeType]
-		if c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) || gdriveFile {
-			http.Redirect(rw, r, fmt.Sprintf("/api/editor?state=%s", qstate), http.StatusMovedPermanently)
-			return
-		}
-
-		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
-			csrf.TemplateTag: csrf.TemplateField(r),
-			"OOXML":          c.fileUtil.IsExtensionOOXMLConvertable(file.FileExtension),
-			"LossEdit":       c.fileUtil.IsExtensionLossEditable(file.FileExtension),
-			"openOnlyoffice": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openOnlyoffice",
-			}),
-			"cannotOpen": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "cannotOpen",
-			}),
-			"selectAction": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "selectAction",
-			}),
-			"openView": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openView",
-			}),
-			"createOOXML": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "createOOXML",
-			}),
-			"editCopy": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "editCopy",
-			}),
-			"openEditing": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openEditing",
-			}),
-			"moreInfo": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "moreInfo",
-			}),
-			"dataRestrictions": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "dataRestrictions",
-			}),
-			"openButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "openButton",
-			}),
-			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "cancelButton",
-			}),
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
-		})
-	}
-}
-
-func (c FileController) BuildConvertFile() http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		var body request.ConvertRequestBody
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			c.logger.Errorf("could not parse gdrive state: %s", err.Error())
-			rw.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		session, err := c.store.Get(r, body.State.UserID)
-		if err != nil {
-			c.logger.Debugf("could not get session store: %s", err.Error())
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		val, ok := session.Values["token"].(string)
-		if !ok {
-			c.logger.Debugf("could not cast a session jwt")
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		var token jwt.MapClaims
-		if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil {
-			c.logger.Debugf("could not verify a jwt: %s", err.Error())
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		if token["jti"] != body.State.UserID {
-			c.logger.Debugf("user with state id %s doesn't match token's id %s", body.State.UserID, token["jti"])
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		c.emitter.Fire(body.Action, map[string]any{
-			"writer":  rw,
-			"request": r,
-			"state":   &body.State,
-		})
 	}
 }

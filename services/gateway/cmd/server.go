@@ -49,7 +49,8 @@ func Server() *cli.Command {
 				CONFIG_PATH, pkg.WithModules(
 					shared.BuildNewCredentialsConfig(CONFIG_PATH),
 					shared.BuildNewOnlyofficeConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
-					controller.NewAuthController, controller.NewEditorController, controller.NewFileController,
+					controller.NewAuthController, controller.NewEditorController,
+					controller.NewFileController, controller.NewConvertController,
 					chttp.NewService, web.NewServer,
 				), pkg.WithInvokables(
 					command.NewViewCommand,

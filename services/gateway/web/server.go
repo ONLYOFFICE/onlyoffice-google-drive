@@ -32,12 +32,13 @@ import (
 )
 
 type GdriveHTTPService struct {
-	mux              *chi.Mux
-	store            sessions.Store
-	authController   controller.AuthController
-	editorController controller.EditorController
-	fileController   controller.FileController
-	credentials      *oauth2.Config
+	mux               *chi.Mux
+	store             sessions.Store
+	authController    controller.AuthController
+	editorController  controller.EditorController
+	fileController    controller.FileController
+	convertController controller.ConvertController
+	credentials       *oauth2.Config
 }
 
 // NewService initializes http server with options.
@@ -45,16 +46,18 @@ func NewServer(
 	authController controller.AuthController,
 	editorController controller.EditorController,
 	fileController controller.FileController,
+	convertController controller.ConvertController,
 	credentialsConfig *shared.OAuthCredentialsConfig,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
 	service := GdriveHTTPService{
-		mux:              chi.NewRouter(),
-		store:            sessions.NewCookieStore([]byte(credentialsConfig.Credentials.ClientSecret)),
-		authController:   authController,
-		editorController: editorController,
-		fileController:   fileController,
-		credentials:      credentials,
+		mux:               chi.NewRouter(),
+		store:             sessions.NewCookieStore([]byte(credentialsConfig.Credentials.ClientSecret)),
+		authController:    authController,
+		editorController:  editorController,
+		fileController:    fileController,
+		convertController: convertController,
+		credentials:       credentials,
 	}
 
 	return service
@@ -94,8 +97,8 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 		r.Route("/api", func(cr chi.Router) {
 			cr.Get("/download", s.fileController.BuildDownloadFile())
 			cr.Get("/editor", s.editorController.BuildGetEditor())
-			cr.Get("/convert", s.fileController.BuildConvertPage())
-			cr.Post("/convert", s.fileController.BuildConvertFile())
+			cr.Get("/convert", s.convertController.BuildConvertPage())
+			cr.Post("/convert", s.convertController.BuildConvertFile())
 		})
 
 		r.NotFound(func(rw http.ResponseWriter, cr *http.Request) {
