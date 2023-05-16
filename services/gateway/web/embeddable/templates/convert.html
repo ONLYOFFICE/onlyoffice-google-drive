@@ -217,7 +217,10 @@
             <div id="error" x-show="!loading && error" hidden>
                 {{template "error" .}}
             </div>
-            <div id="spinner" x-show="loading && !error">
+            <div
+                style="position: absolute; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column; margin: 0; padding: 0;"
+                x-show="loading && !error"
+            >
                 {{template "spinner"}}
             </div>
         </div>
