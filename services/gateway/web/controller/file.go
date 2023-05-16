@@ -20,6 +20,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,9 +31,14 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/gorilla/csrf"
+	"github.com/gorilla/sessions"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/semaphore"
@@ -43,6 +49,7 @@ import (
 type FileController struct {
 	client     client.Client
 	jwtManager crypto.JwtManager
+	store      *sessions.CookieStore
 	server     *config.ServerConfig
 	onlyoffice *shared.OnlyofficeConfig
 	credetials *oauth2.Config
@@ -57,10 +64,85 @@ func NewFileController(
 	return FileController{
 		client:     client,
 		jwtManager: jwtManager,
+		store:      sessions.NewCookieStore([]byte(credentials.ClientSecret)),
 		server:     server,
 		onlyoffice: onlyoffice,
 		credetials: credentials,
 		logger:     logger,
+	}
+}
+
+func (c FileController) BuildCreateFilePage() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", "text/html")
+		qstate := r.URL.Query().Get("state")
+		state := request.DriveState{UserAgent: r.UserAgent()}
+		errMsg := map[string]interface{}{
+			"errorMain":    "Sorry, your request is invalid",
+			"errorSubtext": "Please try again",
+			"reloadButton": "Reload",
+		}
+
+		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
+			embeddable.ErrorPage.Execute(rw, errMsg)
+			return
+		}
+
+		session, _ := c.store.Get(r, state.UserID)
+		val, ok := session.Values["token"].(string)
+		if !ok {
+			c.logger.Debugf("could not cast a session jwt")
+			session.Options.MaxAge = -1
+			session.Save(r, rw)
+			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
+				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
+			), http.StatusSeeOther)
+			return
+		}
+
+		var token jwt.MapClaims
+		if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil || token["jti"] != state.UserID {
+			c.logger.Warnf("could not verify a jwt: %s", err.Error())
+			session.Options.MaxAge = -1
+			session.Save(r, rw)
+			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
+				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
+			), http.StatusSeeOther)
+			return
+		}
+
+		locale, _ := session.Values["locale"].(string)
+		loc := i18n.NewLocalizer(embeddable.Bundle, locale)
+		embeddable.CreationPage.Execute(rw, map[string]interface{}{
+			csrf.TemplateTag: csrf.TemplateField(r),
+			"createFileTitle": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createFileTitle",
+			}),
+			"createDocx": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createDocx",
+			}),
+			"createPptx": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createPptx",
+			}),
+			"createXlsx": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createXlsx",
+			}),
+			"createButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createButton",
+			}),
+			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "cancelButton",
+			}),
+			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "errorMain",
+			}),
+			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "errorSubtext",
+			}),
+			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "reloadButton",
+			}),
+		})
 	}
 }
 

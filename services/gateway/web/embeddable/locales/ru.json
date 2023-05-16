@@ -12,5 +12,10 @@
    "openView": "Open the file for viewing only",
    "selectAction": "Please select the action:",
    "cannotOpen": "This file type can not be opened correctly.",
-   "openOnlyoffice": "Open with ONLYOFFICE"
+   "openOnlyoffice": "Open with ONLYOFFICE",
+   "createFileTitle": "Create a new ONLYOFFICE file",
+   "createDocx": "Create a word file",
+   "createPptx": "Create a slide file",
+   "createXlsx": "Create a spreadsheet file",
+   "createButton": "Create"
 }

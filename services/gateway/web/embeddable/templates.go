@@ -24,6 +24,9 @@ var (
 	ConvertPage = template.Must(template.ParseFS(
 		templateFiles, "templates/convert.html", "templates/error.html", "templates/spinner.html",
 	))
+	CreationPage = template.Must(template.ParseFS(
+		templateFiles, "templates/create.html", "templates/error.html", "templates/spinner.html",
+	))
 )
 
 func init() {
