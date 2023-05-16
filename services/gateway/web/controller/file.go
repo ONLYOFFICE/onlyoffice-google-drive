@@ -30,6 +30,7 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
@@ -48,6 +49,7 @@ import (
 
 type FileController struct {
 	client     client.Client
+	emitter    events.Emitter
 	jwtManager crypto.JwtManager
 	store      *sessions.CookieStore
 	server     *config.ServerConfig
@@ -57,12 +59,13 @@ type FileController struct {
 }
 
 func NewFileController(
-	client client.Client, jwtManager crypto.JwtManager,
+	client client.Client, emitter events.Emitter, jwtManager crypto.JwtManager,
 	server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
 	credentials *oauth2.Config, logger log.Logger,
 ) FileController {
 	return FileController{
 		client:     client,
+		emitter:    emitter,
 		jwtManager: jwtManager,
 		store:      sessions.NewCookieStore([]byte(credentials.ClientSecret)),
 		server:     server,
@@ -142,6 +145,23 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "reloadButton",
 			}),
+		})
+	}
+}
+
+func (c FileController) BuildCreateFile() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		var body request.CreateRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			c.logger.Errorf("could not parse gdrive state: %s", err.Error())
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		c.emitter.Fire("new", map[string]any{
+			"writer":  rw,
+			"request": r,
+			"payload": &body,
 		})
 	}
 }

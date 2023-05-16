@@ -25,8 +25,9 @@ import (
 )
 
 type DriveState struct {
-	IDS       []string `json:"ids"`
 	Action    string   `json:"action"`
+	IDS       []string `json:"ids"`
+	FolderID  string   `json:"folderId"`
 	UserID    string   `json:"userId"`
 	UserAgent string   `json:"userAgent,omitempty"`
 	ForceEdit bool     `json:"forceEdit"`

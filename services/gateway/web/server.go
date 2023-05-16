@@ -98,6 +98,7 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 			cr.Get("/download", s.fileController.BuildDownloadFile())
 			cr.Get("/editor", s.editorController.BuildGetEditor())
 			cr.Get("/create", s.fileController.BuildCreateFilePage())
+			cr.Post("/create", s.fileController.BuildCreateFile())
 			cr.Get("/convert", s.convertController.BuildConvertPage())
 			cr.Post("/convert", s.convertController.BuildConvertFile())
 		})

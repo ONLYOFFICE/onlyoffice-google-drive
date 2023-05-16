@@ -56,6 +56,7 @@ func Server() *cli.Command {
 					command.NewViewCommand,
 					command.NewEditCommand,
 					command.NewCreateCommand,
+					command.NewCommand,
 				),
 			).Bootstrap()
 

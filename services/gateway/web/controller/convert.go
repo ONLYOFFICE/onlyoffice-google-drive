@@ -284,18 +284,6 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 			return
 		}
 
-		session, err := c.store.Get(r, body.State.UserID)
-		if err != nil {
-			c.logger.Debugf("could not get session store: %s", err.Error())
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if err := c.validateToken(body.State, session); err != nil {
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
 		c.emitter.Fire(body.Action, map[string]any{
 			"writer":  rw,
 			"request": r,
