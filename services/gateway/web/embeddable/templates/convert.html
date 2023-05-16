@@ -142,7 +142,7 @@
     <div
         style="width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
         <div x-data="convertForm()">
-            <div x-show="!loading && !error">
+            <div id="conversion" x-show="!loading && !error" hidden>
                 <h2
                     style="font-family: Open Sans; font-weight: 700; font-size: 21px; line-height: 28px; padding-left: 1rem;">
                     {{.openOnlyoffice}}</h2>
@@ -214,16 +214,18 @@
                     </div>
                 </div>
             </div>
-            <div x-show="!loading && error">
+            <div id="error" x-show="!loading && error" hidden>
                 {{template "error" .}}
             </div>
-            <div x-show="loading && !error">
+            <div id="spinner" x-show="loading && !error">
                 {{template "spinner"}}
             </div>
         </div>
     </div>
     <script>
         function convertForm() {
+            document.getElementById("conversion").hidden = false;
+            document.getElementById("error").hidden = false;
             return {
                 action: '',
                 loading: false,
