@@ -233,7 +233,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 
 func (c ConfigHandler) BuildConfig(ctx context.Context, payload request.DriveState, res *response.BuildConfigResponse) error {
 	c.logger.Debugf("processing a docs config: %s", payload.IDS[0])
-	config, err, _ := c.group.Do(fmt.Sprint(payload.UserID), func() (interface{}, error) {
+	config, err, _ := c.group.Do(fmt.Sprintf("config-%s", payload.UserID), func() (interface{}, error) {
 		req := c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 			fmt.Sprint(payload.UserID),
