@@ -20,6 +20,7 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -43,6 +44,11 @@ import (
 	"google.golang.org/api/drive/v2"
 	goauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
+)
+
+var (
+	_ErrSessionTokenCasting = errors.New("could not cast a session token")
+	_ErrUserIdMatching      = errors.New("token uid and state uid do not match")
 )
 
 type ConvertController struct {
@@ -73,6 +79,26 @@ func NewConvertController(
 	}
 }
 
+func (c ConvertController) validateToken(state request.DriveState, session *sessions.Session) error {
+	val, ok := session.Values["token"].(string)
+	if !ok {
+		c.logger.Debugf("could not cast a session jwt")
+		return _ErrSessionTokenCasting
+	}
+
+	var token jwt.MapClaims
+	if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil {
+		c.logger.Warnf("could not verify a jwt: %s", err.Error())
+		return err
+	}
+
+	if token["jti"] != state.UserID {
+		return _ErrUserIdMatching
+	}
+
+	return nil
+}
+
 func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
@@ -90,9 +116,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		session, _ := c.store.Get(r, state.UserID)
-		val, ok := session.Values["token"].(string)
-		if !ok {
-			c.logger.Debugf("could not cast a session jwt")
+		if err := c.validateToken(state, session); err != nil {
 			session.Options.MaxAge = -1
 			session.Save(r, rw)
 			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
@@ -100,17 +124,6 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			), http.StatusSeeOther)
 			return
 		}
-
-		var token jwt.RegisteredClaims
-		if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil {
-			c.logger.Warnf("could not verify a jwt: %s", err.Error())
-			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
-		}
-
-		c.logger.Debugf("jwt %s is valid", val)
 
 		signature, err := c.jwtManager.Sign(c.credetials.ClientSecret, jwt.RegisteredClaims{
 			ID:        state.UserID,
@@ -278,22 +291,7 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 			return
 		}
 
-		val, ok := session.Values["token"].(string)
-		if !ok {
-			c.logger.Debugf("could not cast a session jwt")
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		var token jwt.MapClaims
-		if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil {
-			c.logger.Debugf("could not verify a jwt: %s", err.Error())
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		if token["jti"] != body.State.UserID {
-			c.logger.Debugf("user with state id %s doesn't match token's id %s", body.State.UserID, token["jti"])
+		if err := c.validateToken(body.State, session); err != nil {
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
