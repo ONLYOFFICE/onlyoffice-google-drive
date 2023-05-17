@@ -32,14 +32,12 @@ import (
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/events"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -50,9 +48,7 @@ import (
 
 type FileController struct {
 	client     client.Client
-	emitter    events.Emitter
 	jwtManager crypto.JwtManager
-	store      *sessions.CookieStore
 	server     *config.ServerConfig
 	onlyoffice *shared.OnlyofficeConfig
 	credetials *oauth2.Config
@@ -61,15 +57,13 @@ type FileController struct {
 }
 
 func NewFileController(
-	client client.Client, emitter events.Emitter, jwtManager crypto.JwtManager,
+	client client.Client, jwtManager crypto.JwtManager,
 	server *config.ServerConfig, onlyoffice *shared.OnlyofficeConfig,
 	credentials *oauth2.Config, logger log.Logger,
 ) FileController {
 	return FileController{
 		client:     client,
-		emitter:    emitter,
 		jwtManager: jwtManager,
-		store:      sessions.NewCookieStore([]byte(credentials.ClientSecret)),
 		server:     server,
 		onlyoffice: onlyoffice,
 		credetials: credentials,
