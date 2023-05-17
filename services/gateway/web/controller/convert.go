@@ -86,6 +86,8 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
 		qstate := r.URL.Query().Get("state")
+		tctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
 		errMsg := map[string]interface{}{
 			"errorMain":    "Sorry, the document cannot be opened",
 			"errorSubtext": "Please try again",
@@ -128,7 +130,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		var ures response.UserResponse
-		if err := c.client.Call(r.Context(), c.client.NewRequest(
+		if err := c.client.Call(tctx, c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 			fmt.Sprint(state.UserID),
 		), &ures); err != nil {
@@ -137,11 +139,13 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			return
 		}
 
-		srv, err := drive.NewService(r.Context(), option.WithHTTPClient(c.credentials.Client(r.Context(), &oauth2.Token{
-			AccessToken:  ures.AccessToken,
-			TokenType:    ures.TokenType,
-			RefreshToken: ures.RefreshToken,
-		})))
+		srv, err := drive.NewService(tctx, option.WithHTTPClient(
+			c.credentials.Client(tctx, &oauth2.Token{
+				AccessToken:  ures.AccessToken,
+				TokenType:    ures.TokenType,
+				RefreshToken: ures.RefreshToken,
+			})),
+		)
 
 		if err != nil {
 			c.logger.Errorf("unable to retrieve drive service: %v", err)
@@ -266,8 +270,11 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 }
 
 func (c ConvertController) convertFile(ctx context.Context, state *request.DriveState) (*request.DriveState, error) {
+	uctx, cancel := context.WithTimeout(ctx, time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second)
+	defer cancel()
+
 	var ures response.UserResponse
-	if err := c.client.Call(ctx, c.client.NewRequest(
+	if err := c.client.Call(uctx, c.client.NewRequest(
 		fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 		fmt.Sprint(state.UserID),
 	), &ures); err != nil {
@@ -275,7 +282,7 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 		return nil, err
 	}
 
-	srv, err := drive.NewService(ctx, option.WithHTTPClient(c.credentials.Client(ctx, &oauth2.Token{
+	srv, err := drive.NewService(uctx, option.WithHTTPClient(c.credentials.Client(ctx, &oauth2.Token{
 		AccessToken:  ures.AccessToken,
 		TokenType:    ures.TokenType,
 		RefreshToken: ures.RefreshToken,
@@ -325,7 +332,7 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 
 	creq.Token = ctok
 	req, err := http.NewRequestWithContext(
-		ctx,
+		uctx,
 		"POST",
 		fmt.Sprintf("%s/ConvertService.ashx", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL),
 		bytes.NewBuffer(creq.ToJSON()),
@@ -349,7 +356,7 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 		return nil, err
 	}
 
-	cfile, err := otelhttp.Get(ctx, cresp.FileURL)
+	cfile, err := otelhttp.Get(uctx, cresp.FileURL)
 	if err != nil {
 		c.logger.Errorf("could not retreive a converted file: %s", err.Error())
 		return nil, err
@@ -374,7 +381,7 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 		Title:                        filename,
 		Parents:                      file.Parents,
 		MimeType:                     mime.TypeByExtension(fmt.Sprintf(".%s", cresp.FileType)),
-	}).Context(ctx).Media(cfile.Body).Do()
+	}).Context(uctx).Media(cfile.Body).Do()
 
 	if err != nil {
 		c.logger.Errorf("could not modify file %s: %s", state.IDS[0], err.Error())

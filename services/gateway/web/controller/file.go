@@ -80,6 +80,8 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 		rw.Header().Set("Content-Type", "text/html")
 		qstate := r.URL.Query().Get("state")
 		state := request.DriveState{UserAgent: r.UserAgent()}
+		tctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
 			http.Redirect(rw, r, "https://drive.google.com", http.StatusMovedPermanently)
 			return
@@ -88,7 +90,7 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 		session, err := c.store.Get(r, "onlyoffice-auth")
 		if err != nil {
 			c.logger.Debugf("could not get auth session: %s", err.Error())
-			http.Redirect(rw, r.WithContext(r.Context()), c.credentials.AuthCodeURL(
+			http.Redirect(rw, r.WithContext(tctx), c.credentials.AuthCodeURL(
 				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
 			), http.StatusSeeOther)
 			return
@@ -136,6 +138,8 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 
 func (c FileController) BuildCreateFile() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		uctx, cancel := context.WithTimeout(r.Context(), time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second)
+		defer cancel()
 		var body request.DriveState
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			c.logger.Errorf("could not parse gdrive state: %s", err.Error())
@@ -151,7 +155,7 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 		defer c.sem.Release(1)
 
 		var ures response.UserResponse
-		if err := c.client.Call(r.Context(), c.client.NewRequest(
+		if err := c.client.Call(uctx, c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 			fmt.Sprint(body.UserID),
 		), &ures); err != nil {
@@ -160,13 +164,13 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			return
 		}
 
-		gclient := c.credentials.Client(r.Context(), &oauth2.Token{
+		gclient := c.credentials.Client(uctx, &oauth2.Token{
 			AccessToken:  ures.AccessToken,
 			TokenType:    ures.TokenType,
 			RefreshToken: ures.RefreshToken,
 		})
 
-		srv, err := drive.NewService(r.Context(), option.WithHTTPClient(gclient))
+		srv, err := drive.NewService(uctx, option.WithHTTPClient(gclient))
 		if err != nil {
 			c.logger.Errorf("unable to retrieve drive service: %v", err)
 			rw.WriteHeader(http.StatusInternalServerError)
@@ -189,7 +193,7 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			Parents: []*drive.ParentReference{{
 				Id: body.FolderID,
 			}},
-		}).Media(file).Do()
+		}).Context(uctx).Media(file).Do()
 
 		if err != nil {
 			c.logger.Errorf("could not create a new file: %s", err.Error())
