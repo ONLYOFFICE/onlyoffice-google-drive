@@ -177,15 +177,14 @@
                     const urlSearchParams = new URLSearchParams(window.location.search);
                     const params = Object.fromEntries(urlSearchParams.entries());
                     try {
+                        const state = JSON.parse(params.state || '{}');
+                        state.action = this.type;
                         const resp = await fetch(`/api/create`, {
                             method: 'POST',
                             headers: {
                                 'X-CSRF-Token': csrfToken,
                             },
-                            body: JSON.stringify({
-                                type: this.type,
-                                state: JSON.parse(params.state || ''),
-                            }),
+                            body: JSON.stringify(state),
                         });
 
                         if (resp.status >= 300) throw new Error('could not create a file');

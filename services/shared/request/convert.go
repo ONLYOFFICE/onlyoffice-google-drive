@@ -24,17 +24,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type ConvertRequestBody struct {
-	Action string     `json:"action"`
-	State  DriveState `json:"state"`
-}
-
-func (r ConvertRequestBody) ToJSON() []byte {
-	buf, _ := json.Marshal(r)
-	return buf
-}
-
-type ConvertAPIRequest struct {
+type ConvertRequest struct {
 	jwt.RegisteredClaims
 	Async      bool   `json:"async"`
 	Key        string `json:"key"`
@@ -44,7 +34,7 @@ type ConvertAPIRequest struct {
 	Token      string `json:"token,omitempty"`
 }
 
-func (r ConvertAPIRequest) ToJSON() []byte {
+func (r ConvertRequest) ToJSON() []byte {
 	buf, _ := json.Marshal(r)
 	return buf
 }

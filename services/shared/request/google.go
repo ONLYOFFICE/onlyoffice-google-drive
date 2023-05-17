@@ -25,6 +25,7 @@ import (
 )
 
 type DriveState struct {
+	jwt.RegisteredClaims
 	Action    string   `json:"action"`
 	IDS       []string `json:"ids"`
 	FolderID  string   `json:"folderId"`

@@ -23,6 +23,7 @@ import (
 
 	shttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -38,6 +39,7 @@ type GdriveHTTPService struct {
 	editorController  controller.EditorController
 	fileController    controller.FileController
 	convertController controller.ConvertController
+	sessionMiddleware middleware.SessionMiddleware
 	credentials       *oauth2.Config
 }
 
@@ -47,6 +49,7 @@ func NewServer(
 	editorController controller.EditorController,
 	fileController controller.FileController,
 	convertController controller.ConvertController,
+	sessionMiddleware middleware.SessionMiddleware,
 	credentialsConfig *shared.OAuthCredentialsConfig,
 	credentials *oauth2.Config,
 ) shttp.ServerEngine {
@@ -57,6 +60,7 @@ func NewServer(
 		editorController:  editorController,
 		fileController:    fileController,
 		convertController: convertController,
+		sessionMiddleware: sessionMiddleware,
 		credentials:       credentials,
 	}
 
@@ -94,12 +98,16 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 			cr.Get("/auth", s.authController.BuildGetAuth())
 		})
 
+		r.Route("/", func(cr chi.Router) {
+			cr.Use(s.sessionMiddleware.Protect)
+			cr.Get("/convert", s.convertController.BuildConvertPage())
+			cr.Get("/create", s.fileController.BuildCreateFilePage())
+			cr.Get("/editor", s.editorController.BuildEditorPage())
+		})
+
 		r.Route("/api", func(cr chi.Router) {
 			cr.Get("/download", s.fileController.BuildDownloadFile())
-			cr.Get("/editor", s.editorController.BuildGetEditor())
-			cr.Get("/create", s.fileController.BuildCreateFilePage())
 			cr.Post("/create", s.fileController.BuildCreateFile())
-			cr.Get("/convert", s.convertController.BuildConvertPage())
 			cr.Post("/convert", s.convertController.BuildConvertFile())
 		})
 

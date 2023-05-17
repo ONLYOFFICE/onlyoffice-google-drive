@@ -24,7 +24,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type BuildConfigResponse struct {
+type ConfigResponse struct {
 	jwt.RegisteredClaims
 	Document     Document     `json:"document"`
 	DocumentType string       `json:"documentType"`
@@ -35,7 +35,7 @@ type BuildConfigResponse struct {
 	ServerURL    string       `json:"server_url"`
 }
 
-func (r BuildConfigResponse) ToJSON() []byte {
+func (r ConfigResponse) ToJSON() []byte {
 	buf, _ := json.Marshal(r)
 	return buf
 }

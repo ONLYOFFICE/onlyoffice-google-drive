@@ -22,8 +22,8 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg"
 	chttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/command"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/urfave/cli/v2"
 )
@@ -51,12 +51,8 @@ func Server() *cli.Command {
 					shared.BuildNewOnlyofficeConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
 					controller.NewAuthController, controller.NewEditorController,
 					controller.NewFileController, controller.NewConvertController,
+					middleware.NewSessionMiddleware,
 					chttp.NewService, web.NewServer,
-				), pkg.WithInvokables(
-					command.NewViewCommand,
-					command.NewEditCommand,
-					command.NewCreateCommand,
-					command.NewCommand,
 				),
 			).Bootstrap()
 

@@ -120,7 +120,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 				return nil, err
 			}
 
-			session, _ := c.store.Get(r, uinfo.Id)
+			session, _ := c.store.Get(r, "onlyoffice-auth")
 			session.Values["token"] = signature
 			session.Values["locale"] = uinfo.Locale
 			session.Options.MaxAge = 60 * 60 * 23 * 7

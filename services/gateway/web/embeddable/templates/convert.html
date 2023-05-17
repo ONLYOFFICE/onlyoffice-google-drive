@@ -237,15 +237,14 @@
                     const urlSearchParams = new URLSearchParams(window.location.search);
                     const params = Object.fromEntries(urlSearchParams.entries());
                     try {
+                        const state = JSON.parse(params.state || '{}');
+                        state.action = this.action;
                         const resp = await fetch(`/api/convert`, {
                             method: 'POST',
                             headers: {
                                 'X-CSRF-Token': csrfToken,
                             },
-                            body: JSON.stringify({
-                                action: this.action,
-                                state: JSON.parse(params.state || ''),
-                            }),
+                            body: JSON.stringify(state),
                         });
 
                         if (resp.status >= 300) throw new Error('could not convert a file');

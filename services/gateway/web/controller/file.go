@@ -23,7 +23,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +38,6 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -55,6 +56,7 @@ type FileController struct {
 	server     *config.ServerConfig
 	onlyoffice *shared.OnlyofficeConfig
 	credetials *oauth2.Config
+	sem        *semaphore.Weighted
 	logger     log.Logger
 }
 
@@ -71,6 +73,7 @@ func NewFileController(
 		server:     server,
 		onlyoffice: onlyoffice,
 		credetials: credentials,
+		sem:        semaphore.NewWeighted(int64(onlyoffice.Onlyoffice.Builder.AllowedDownloads)),
 		logger:     logger,
 	}
 }
@@ -80,42 +83,12 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 		rw.Header().Set("Content-Type", "text/html")
 		qstate := r.URL.Query().Get("state")
 		state := request.DriveState{UserAgent: r.UserAgent()}
-		errMsg := map[string]interface{}{
-			"errorMain":    "Sorry, your request is invalid",
-			"errorSubtext": "Please try again",
-			"reloadButton": "Reload",
-		}
-
 		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			embeddable.ErrorPage.Execute(rw, errMsg)
+			http.Redirect(rw, r, "https://drive.google.com", http.StatusMovedPermanently)
 			return
 		}
 
-		session, _ := c.store.Get(r, state.UserID)
-		val, ok := session.Values["token"].(string)
-		if !ok {
-			c.logger.Debugf("could not cast a session jwt")
-			session.Options.MaxAge = -1
-			session.Save(r, rw)
-			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
-		}
-
-		var token jwt.MapClaims
-		if err := c.jwtManager.Verify(c.credetials.ClientSecret, val, &token); err != nil || token["jti"] != state.UserID {
-			c.logger.Warnf("could not verify a jwt: %s", err.Error())
-			session.Options.MaxAge = -1
-			session.Save(r, rw)
-			http.Redirect(rw, r.WithContext(r.Context()), c.credetials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
-		}
-
-		locale, _ := session.Values["locale"].(string)
-		loc := i18n.NewLocalizer(embeddable.Bundle, locale)
+		loc := i18n.NewLocalizer(embeddable.Bundle, r.Header.Get("Locale"))
 		embeddable.CreationPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"createFileTitle": loc.MustLocalize(&i18n.LocalizeConfig{
@@ -151,18 +124,73 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 
 func (c FileController) BuildCreateFile() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		var body request.CreateRequest
+		var body request.DriveState
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			c.logger.Errorf("could not parse gdrive state: %s", err.Error())
 			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		c.emitter.Fire("new", map[string]any{
-			"writer":  rw,
-			"request": r,
-			"payload": &body,
+		if ok := c.sem.TryAcquire(1); !ok {
+			rw.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+
+		defer c.sem.Release(1)
+
+		var ures response.UserResponse
+		if err := c.client.Call(r.Context(), c.client.NewRequest(
+			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
+			fmt.Sprint(body.UserID),
+		), &ures); err != nil {
+			c.logger.Errorf("could not get user %s access info to create a new file: %s", body.UserID, err.Error())
+			rw.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		gclient := c.credetials.Client(r.Context(), &oauth2.Token{
+			AccessToken:  ures.AccessToken,
+			TokenType:    ures.TokenType,
+			RefreshToken: ures.RefreshToken,
 		})
+
+		srv, err := drive.NewService(r.Context(), option.WithHTTPClient(gclient))
+		if err != nil {
+			c.logger.Errorf("unable to retrieve drive service: %v", err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		file, err := embeddable.OfficeFiles.Open(fmt.Sprintf("files/en-US/new.%s", body.Action))
+		if err != nil {
+			c.logger.Errorf("could not open a new file: %s", err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		newFile, err := srv.Files.Insert(&drive.File{
+			CreatedDate:      time.Now().Format(time.RFC3339),
+			FileExtension:    body.Action,
+			MimeType:         mime.TypeByExtension(fmt.Sprintf(".%s", body.Action)),
+			Title:            fmt.Sprintf("New Document.%s", body.Action),
+			OriginalFilename: fmt.Sprintf("New Document.%s", body.Action),
+			Parents: []*drive.ParentReference{{
+				Id: body.FolderID,
+			}},
+		}).Media(file).Do()
+
+		if err != nil {
+			c.logger.Errorf("could not create a new file: %s", err.Error())
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		body.IDS = []string{newFile.Id}
+		http.Redirect(
+			rw, r,
+			fmt.Sprintf("/editor?state=%s", url.QueryEscape(string(body.ToJSON()))),
+			http.StatusMovedPermanently,
+		)
 	}
 }
 

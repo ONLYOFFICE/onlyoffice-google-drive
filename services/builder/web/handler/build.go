@@ -80,8 +80,8 @@ func NewConfigHandler(
 	}
 }
 
-func (c ConfigHandler) processConfig(user response.UserResponse, req request.DriveState, ctx context.Context) (response.BuildConfigResponse, error) {
-	var config response.BuildConfigResponse
+func (c ConfigHandler) processConfig(user response.UserResponse, req request.DriveState, ctx context.Context) (response.ConfigResponse, error) {
+	var config response.ConfigResponse
 	client := c.credentials.Client(ctx, &oauth2.Token{
 		AccessToken:  user.AccessToken,
 		TokenType:    user.TokenType,
@@ -160,7 +160,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	usr := <-userChan
 
 	filename := c.fileUtil.EscapeFilename(file.Title)
-	config = response.BuildConfigResponse{
+	config = response.ConfigResponse{
 		Document: response.Document{
 			Key:   string(c.hasher.Hash(file.ModifiedDate)),
 			Title: filename,
@@ -231,7 +231,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	return config, nil
 }
 
-func (c ConfigHandler) BuildConfig(ctx context.Context, payload request.DriveState, res *response.BuildConfigResponse) error {
+func (c ConfigHandler) BuildConfig(ctx context.Context, payload request.DriveState, res *response.ConfigResponse) error {
 	c.logger.Debugf("processing a docs config: %s", payload.IDS[0])
 	config, err, _ := c.group.Do(fmt.Sprintf("config-%s", payload.UserID), func() (interface{}, error) {
 		req := c.client.NewRequest(
@@ -253,7 +253,7 @@ func (c ConfigHandler) BuildConfig(ctx context.Context, payload request.DriveSta
 		return config, nil
 	})
 
-	if cfg, ok := config.(response.BuildConfigResponse); ok {
+	if cfg, ok := config.(response.ConfigResponse); ok {
 		*res = cfg
 		return nil
 	}
