@@ -38,6 +38,7 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 	"github.com/gorilla/csrf"
+	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
@@ -47,13 +48,14 @@ import (
 )
 
 type FileController struct {
-	client     client.Client
-	jwtManager crypto.JwtManager
-	server     *config.ServerConfig
-	onlyoffice *shared.OnlyofficeConfig
-	credetials *oauth2.Config
-	sem        *semaphore.Weighted
-	logger     log.Logger
+	client      client.Client
+	jwtManager  crypto.JwtManager
+	store       *sessions.CookieStore
+	server      *config.ServerConfig
+	onlyoffice  *shared.OnlyofficeConfig
+	credentials *oauth2.Config
+	sem         *semaphore.Weighted
+	logger      log.Logger
 }
 
 func NewFileController(
@@ -62,13 +64,14 @@ func NewFileController(
 	credentials *oauth2.Config, logger log.Logger,
 ) FileController {
 	return FileController{
-		client:     client,
-		jwtManager: jwtManager,
-		server:     server,
-		onlyoffice: onlyoffice,
-		credetials: credentials,
-		sem:        semaphore.NewWeighted(int64(onlyoffice.Onlyoffice.Builder.AllowedDownloads)),
-		logger:     logger,
+		client:      client,
+		jwtManager:  jwtManager,
+		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
+		server:      server,
+		onlyoffice:  onlyoffice,
+		credentials: credentials,
+		sem:         semaphore.NewWeighted(int64(onlyoffice.Onlyoffice.Builder.AllowedDownloads)),
+		logger:      logger,
 	}
 }
 
@@ -82,7 +85,22 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 			return
 		}
 
-		loc := i18n.NewLocalizer(embeddable.Bundle, r.Header.Get("Locale"))
+		session, err := c.store.Get(r, "onlyoffice-auth")
+		if err != nil {
+			c.logger.Debugf("could not get auth session: %s", err.Error())
+			http.Redirect(rw, r.WithContext(r.Context()), c.credentials.AuthCodeURL(
+				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
+			), http.StatusSeeOther)
+			return
+		}
+
+		locale, ok := session.Values["locale"].(string)
+		if !ok {
+			c.logger.Debug("could not extract locale")
+			locale = "en"
+		}
+
+		loc := i18n.NewLocalizer(embeddable.Bundle, locale)
 		embeddable.CreationPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"createFileTitle": loc.MustLocalize(&i18n.LocalizeConfig{
@@ -142,7 +160,7 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			return
 		}
 
-		gclient := c.credetials.Client(r.Context(), &oauth2.Token{
+		gclient := c.credentials.Client(r.Context(), &oauth2.Token{
 			AccessToken:  ures.AccessToken,
 			TokenType:    ures.TokenType,
 			RefreshToken: ures.RefreshToken,
@@ -213,7 +231,7 @@ func (c FileController) BuildDownloadFile() http.HandlerFunc {
 
 		go func() {
 			defer wg.Done()
-			if err := c.jwtManager.Verify(c.credetials.ClientSecret, token, &dtoken); err != nil {
+			if err := c.jwtManager.Verify(c.credentials.ClientSecret, token, &dtoken); err != nil {
 				c.logger.Errorf("could not verify gdrive token: %s", err.Error())
 				errChan <- err
 				return
@@ -259,7 +277,7 @@ func (c FileController) BuildDownloadFile() http.HandlerFunc {
 			return
 		}
 
-		gclient := c.credetials.Client(ctx, &oauth2.Token{
+		gclient := c.credentials.Client(ctx, &oauth2.Token{
 			AccessToken:  ures.AccessToken,
 			TokenType:    ures.TokenType,
 			RefreshToken: ures.RefreshToken,
