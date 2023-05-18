@@ -162,7 +162,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	filename := c.fileUtil.EscapeFilename(file.Title)
 	config = response.ConfigResponse{
 		Document: response.Document{
-			Key:   string(c.hasher.Hash(file.ModifiedDate)),
+			Key:   string(c.hasher.Hash(file.ModifiedDate + file.Id)),
 			Title: filename,
 			URL:   fmt.Sprintf("%s/api/download?token=%s", c.onlyoffice.Onlyoffice.Builder.GatewayURL, tkn),
 		},
