@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  gateway:
+    build:
+      context: .
+      target: gateway
+    image: onlyoffice/gdrive-gateway:${PRODUCT_VERSION}
+
+  auth:
+    build:
+      context: .
+      target: auth
+    image: onlyoffice/gdrive-auth:${PRODUCT_VERSION}
+
+  builder:
+    build:
+      context: .
+      target: builder
+    image: onlyoffice/gdrive-builder:${PRODUCT_VERSION}
+
+  callback:
+    build:
+      context: .
+      target: callback
+    image: onlyoffice/gdrive-callback:${PRODUCT_VERSION}
