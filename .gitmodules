@@ -1,4 +1,4 @@
-[submodule "/Users/nsenz/Onlyoffice/gdrive/services/gateway/web/embeddable/files"]
-	path = /Users/nsenz/Onlyoffice/gdrive/services/gateway/web/embeddable/files
+[submodule "services/gateway/web/embeddable/files"]
+	path = services/gateway/web/embeddable/files
 	url = https://github.com/ONLYOFFICE/document-templates.git
 	branch = main/new-small
