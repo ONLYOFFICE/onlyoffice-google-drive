@@ -25,10 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/crypto"
-	plog "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/port"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
+	plog "github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/mitchellh/mapstructure"
 	"go-micro.dev/v4/cache"
 	"golang.org/x/oauth2"

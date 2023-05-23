@@ -19,13 +19,13 @@
 package cmd
 
 import (
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/rpc"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/adapter"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/service"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/handler"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
+	pkg "github.com/ONLYOFFICE/onlyoffice-integration-adapters"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/rpc"
 	"github.com/urfave/cli/v2"
 )
 

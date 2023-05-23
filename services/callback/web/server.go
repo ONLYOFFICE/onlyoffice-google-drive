@@ -21,8 +21,8 @@ package web
 import (
 	"net/http"
 
-	chttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web/controller"
+	chttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )

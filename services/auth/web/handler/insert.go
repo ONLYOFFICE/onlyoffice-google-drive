@@ -22,10 +22,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/port"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 )
 
 type UserInsertHandler struct {

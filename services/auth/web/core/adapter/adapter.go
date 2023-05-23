@@ -19,14 +19,14 @@
 package adapter
 
 import (
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/port"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
 )
 
-func BuildNewUserAdapter(config *config.PersistenceConfig) port.UserAccessServiceAdapter {
+func BuildNewUserAdapter(config *config.StorageConfig) port.UserAccessServiceAdapter {
 	adapter := NewMemoryUserAdapter()
-	if config.Persistence.URL != "" {
-		adapter = NewMongoUserAdapter(config.Persistence.URL)
+	if config.Storage.URL != "" {
+		adapter = NewMongoUserAdapter(config.Storage.URL)
 	}
 
 	return adapter

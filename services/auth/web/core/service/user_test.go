@@ -23,10 +23,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/cache"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/config"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/domain"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/cache"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )

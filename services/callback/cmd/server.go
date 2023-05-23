@@ -19,11 +19,11 @@
 package cmd
 
 import (
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg"
-	chttp "github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/service/http"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/callback/web/controller"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
+	pkg "github.com/ONLYOFFICE/onlyoffice-integration-adapters"
+	chttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
 	"github.com/urfave/cli/v2"
 )
 

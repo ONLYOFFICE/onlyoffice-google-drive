@@ -22,9 +22,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/pkg/log"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/domain"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/auth/web/core/port"
+	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/singleflight"
