@@ -31,6 +31,7 @@ type DriveState struct {
 	FolderID  string   `json:"folderId"`
 	UserID    string   `json:"userId"`
 	UserAgent string   `json:"userAgent,omitempty"`
+	Filename  string   `json:"filename,omitempty"`
 	ForceEdit bool     `json:"forceEdit"`
 }
 

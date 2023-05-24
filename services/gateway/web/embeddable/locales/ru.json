@@ -14,8 +14,10 @@
    "cannotOpen": "This file type can not be opened correctly.",
    "openOnlyoffice": "Open with ONLYOFFICE",
    "createFileTitle": "Create a new ONLYOFFICE file",
-   "createDocx": "Create a word file",
-   "createPptx": "Create a slide file",
-   "createXlsx": "Create a spreadsheet file",
+   "createFileInput": "Title",
+   "createFilePlaceholder": "New Document",
+   "createDocx": "Document",
+   "createPptx": "Presentation",
+   "createXlsx": "Spreadsheet",
    "createButton": "Create"
 }

@@ -105,6 +105,12 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 		loc := i18n.NewLocalizer(embeddable.Bundle, locale)
 		embeddable.CreationPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
+			"createFilePlaceholder": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createFilePlaceholder",
+			}),
+			"createFileInput": loc.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "createFileInput",
+			}),
 			"createFileTitle": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "createFileTitle",
 			}),
@@ -145,6 +151,10 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			c.logger.Errorf("could not parse gdrive state: %s", err.Error())
 			rw.WriteHeader(http.StatusBadRequest)
 			return
+		}
+
+		if body.Filename == "" {
+			body.Filename = "New Document"
 		}
 
 		if ok := c.sem.TryAcquire(1); !ok {
@@ -188,8 +198,8 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			CreatedDate:      time.Now().Format(time.RFC3339),
 			FileExtension:    body.Action,
 			MimeType:         mime.TypeByExtension(fmt.Sprintf(".%s", body.Action)),
-			Title:            fmt.Sprintf("New Document.%s", body.Action),
-			OriginalFilename: fmt.Sprintf("New Document.%s", body.Action),
+			Title:            fmt.Sprintf("%s.%s", body.Filename, body.Action),
+			OriginalFilename: fmt.Sprintf("%s.%s", body.Filename, body.Action),
 			Parents: []*drive.ParentReference{{
 				Id: body.FolderID,
 			}},
