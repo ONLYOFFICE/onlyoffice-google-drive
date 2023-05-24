@@ -157,6 +157,10 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			body.Filename = "New Document"
 		}
 
+		if body.Action == "" {
+			body.Action = "docx"
+		}
+
 		if ok := c.sem.TryAcquire(1); !ok {
 			rw.WriteHeader(http.StatusTooManyRequests)
 			return

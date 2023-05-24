@@ -324,7 +324,7 @@
                 margin-right: 6px;
                 max-width: 164px;
               "
-              :disabled="!name || loading || error"
+              :disabled="!name || !action || loading || error"
             >
               {{.createButton}}
             </button>
