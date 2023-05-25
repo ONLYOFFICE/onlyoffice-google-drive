@@ -191,6 +191,7 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			return
 		}
 
+		c.logger.Debugf("trying to open a file %s", fmt.Sprintf("files/en-US/new.%s", body.Action))
 		file, err := embeddable.OfficeFiles.Open(fmt.Sprintf("files/en-US/new.%s", body.Action))
 		if err != nil {
 			c.logger.Errorf("could not open a new file: %s", err.Error())
@@ -198,10 +199,12 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			return
 		}
 
+		mtype := mime.TypeByExtension(fmt.Sprintf(".%s", body.Action))
+		c.logger.Debugf("file's %s mime type is %s", body.Filename, mtype)
 		newFile, err := srv.Files.Insert(&drive.File{
 			CreatedDate:      time.Now().Format(time.RFC3339),
 			FileExtension:    body.Action,
-			MimeType:         mime.TypeByExtension(fmt.Sprintf(".%s", body.Action)),
+			MimeType:         mtype,
 			Title:            fmt.Sprintf("%s.%s", body.Filename, body.Action),
 			OriginalFilename: fmt.Sprintf("%s.%s", body.Filename, body.Action),
 			Parents: []*drive.ParentReference{{
