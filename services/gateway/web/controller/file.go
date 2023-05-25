@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"net/url"
 	"strings"
@@ -199,12 +198,10 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 			return
 		}
 
-		mtype := mime.TypeByExtension(fmt.Sprintf(".%s", body.Action))
-		c.logger.Debugf("file's %s mime type is %s", body.Filename, mtype)
 		newFile, err := srv.Files.Insert(&drive.File{
 			CreatedDate:      time.Now().Format(time.RFC3339),
 			FileExtension:    body.Action,
-			MimeType:         mtype,
+			MimeType:         shared.MimeTypes[body.Action],
 			Title:            fmt.Sprintf("%s.%s", body.Filename, body.Action),
 			OriginalFilename: fmt.Sprintf("%s.%s", body.Filename, body.Action),
 			Parents: []*drive.ParentReference{{

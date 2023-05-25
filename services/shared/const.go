@@ -23,3 +23,9 @@ const (
 	UserInfoProfile = "https://www.googleapis.com/auth/userinfo.profile"
 	UserInfoEmail   = "https://www.googleapis.com/auth/userinfo.email"
 )
+
+var MimeTypes = map[string]string{
+	"docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	"pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	"xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}

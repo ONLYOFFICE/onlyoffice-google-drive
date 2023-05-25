@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mime"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -365,8 +364,6 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 	defer cfile.Body.Close()
 	now := time.Now().Format(time.RFC3339)
 	filename := fmt.Sprintf("%s.%s", file.Title[:len(file.Title)-len(filepath.Ext(file.Title))], cresp.FileType)
-	mtype := mime.TypeByExtension(fmt.Sprintf(".%s", cresp.FileType))
-	c.logger.Debugf("inserting a newly converted file %s with mime type %s", filename, mtype)
 
 	file, err = srv.Files.Insert(&drive.File{
 		DriveId:                      file.DriveId,
@@ -383,7 +380,7 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 		OwnedByMe:                    true,
 		Title:                        filename,
 		Parents:                      file.Parents,
-		MimeType:                     mtype,
+		MimeType:                     shared.MimeTypes[cresp.FileType],
 	}).Context(uctx).Media(cfile.Body).Do()
 
 	if err != nil {
