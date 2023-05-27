@@ -209,13 +209,13 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 
 		config.Document.FileType = ext
 		config.Document.Permissions = response.Permissions{
-			Edit:                 c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit),
-			Comment:              true,
-			Download:             true,
+			Edit:                 file.Capabilities.CanEdit && (c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit)),
+			Comment:              file.Capabilities.CanComment,
+			Download:             file.Capabilities.CanDownload,
 			Print:                false,
 			Review:               false,
-			Copy:                 true,
-			ModifyContentControl: true,
+			Copy:                 file.Capabilities.CanCopy,
+			ModifyContentControl: file.Capabilities.CanModifyContent,
 			ModifyFilter:         true,
 		}
 		config.DocumentType = fileType
