@@ -95,6 +95,11 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 		r.Handle("/static/*", http.StripPrefix("/static/", fs))
 
 		r.Route("/oauth", func(cr chi.Router) {
+			cr.Get("/install", func(rw http.ResponseWriter, r *http.Request) {
+				http.Redirect(rw, r, s.credentials.AuthCodeURL(
+					"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
+				), http.StatusMovedPermanently)
+			})
 			cr.Get("/auth", s.authController.BuildGetAuth())
 		})
 
