@@ -217,10 +217,12 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 						DefaultOpenWithLink:          file.DefaultOpenWithLink,
 						Description:                  file.Description,
 						FileExtension:                fmt.Sprintf(".%s", ext),
-						OwnedByMe:                    true,
+						Owners:                       file.Owners,
+						OwnedByMe:                    file.OwnedByMe,
 						Title:                        fmt.Sprintf("%s.%s", file.Title, ext),
 						Parents:                      file.Parents,
 						MimeType:                     mime,
+						Permissions:                  file.Permissions,
 					}).Media(body).Do(); err != nil {
 						c.sendErrorResponse(fmt.Sprintf("could not insert a new file for %s: %s", fileID, err.Error()), rw)
 						return
