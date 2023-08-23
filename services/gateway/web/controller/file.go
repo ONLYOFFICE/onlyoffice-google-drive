@@ -74,6 +74,24 @@ func NewFileController(
 	}
 }
 
+func (c FileController) getService(ctx context.Context, uid string) (*drive.Service, error) {
+	var ures response.UserResponse
+	if err := c.client.Call(ctx, c.client.NewRequest(
+		fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
+		fmt.Sprint(uid),
+	), &ures); err != nil {
+		return nil, err
+	}
+
+	return drive.NewService(ctx, option.WithHTTPClient(
+		c.credentials.Client(ctx, &oauth2.Token{
+			AccessToken:  ures.AccessToken,
+			TokenType:    ures.TokenType,
+			RefreshToken: ures.RefreshToken,
+		})),
+	)
+}
+
 func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
@@ -167,25 +185,9 @@ func (c FileController) BuildCreateFile() http.HandlerFunc {
 
 		defer c.sem.Release(1)
 
-		var ures response.UserResponse
-		if err := c.client.Call(uctx, c.client.NewRequest(
-			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
-			fmt.Sprint(body.UserID),
-		), &ures); err != nil {
-			c.logger.Errorf("could not get user %s access info to create a new file: %s", body.UserID, err.Error())
-			rw.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		gclient := c.credentials.Client(uctx, &oauth2.Token{
-			AccessToken:  ures.AccessToken,
-			TokenType:    ures.TokenType,
-			RefreshToken: ures.RefreshToken,
-		})
-
-		srv, err := drive.NewService(uctx, option.WithHTTPClient(gclient))
+		srv, err := c.getService(uctx, body.UserID)
 		if err != nil {
-			c.logger.Errorf("unable to retrieve drive service: %v", err)
+			c.logger.Errorf("could not retrieve drive service for user %s. Reason: %s", body.UserID, err.Error())
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -285,25 +287,9 @@ func (c FileController) BuildDownloadFile() http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Minute)
 		defer cancel()
 
-		var ures response.UserResponse
-		if err := c.client.Call(ctx, c.client.NewRequest(
-			fmt.Sprintf("%s:auth", c.server.Namespace),
-			"UserSelectHandler.GetUser", dtoken.UserID,
-		), &ures); err != nil {
-			c.logger.Debugf("could not get user %s access info: %s", dtoken.UserID, err.Error())
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		gclient := c.credentials.Client(ctx, &oauth2.Token{
-			AccessToken:  ures.AccessToken,
-			TokenType:    ures.TokenType,
-			RefreshToken: ures.RefreshToken,
-		})
-
-		srv, err := drive.NewService(ctx, option.WithHTTPClient(gclient))
+		srv, err := c.getService(ctx, dtoken.UserID)
 		if err != nil {
-			c.logger.Errorf("Unable to retrieve drive service: %v", err)
+			c.logger.Errorf("could not retrieve drive service for user %s. Reason: %s", dtoken.UserID, err.Error())
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
