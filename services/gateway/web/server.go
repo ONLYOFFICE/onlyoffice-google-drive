@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/controller"
+	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/middleware"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	shttp "github.com/ONLYOFFICE/onlyoffice-integration-adapters/service/http"
@@ -87,12 +88,12 @@ func (s *GdriveHTTPService) InitializeServer() *chi.Mux {
 
 // InitializeRoutes builds all http routes.
 func (s *GdriveHTTPService) InitializeRoutes() {
-	fs := http.FileServer(http.Dir("services/gateway/static"))
+	fs := http.FS(embeddable.IconFiles)
 	csrfMiddleware := csrf.Protect([]byte(s.credentials.ClientSecret))
 	s.mux.Group(func(r chi.Router) {
 		r.Use(chimiddleware.Recoverer, chimiddleware.NoCache, csrfMiddleware)
 
-		r.Handle("/static/*", http.StripPrefix("/static/", fs))
+		r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(fs)))
 
 		r.Route("/oauth", func(cr chi.Router) {
 			cr.Get("/install", func(rw http.ResponseWriter, r *http.Request) {
@@ -103,7 +104,7 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 			cr.Get("/auth", s.authController.BuildGetAuth())
 		})
 
-		r.Route("/", func(cr chi.Router) {
+		r.Group(func(cr chi.Router) {
 			cr.Use(s.sessionMiddleware.Protect)
 			cr.Get("/convert", s.convertController.BuildConvertPage())
 			cr.Get("/create", s.fileController.BuildCreateFilePage())
