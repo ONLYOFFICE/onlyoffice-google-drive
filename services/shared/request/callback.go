@@ -35,6 +35,7 @@ func (e *MissingRequestFieldsError) Error() string {
 }
 
 type CallbackRequest struct {
+	FileID  string
 	Actions []struct {
 		Type   int    `json:"type"`
 		UserID string `json:"userid"`

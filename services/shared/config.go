@@ -43,7 +43,7 @@ type OAuthCredentialsConfig struct {
 		AuthProvider      string   `yaml:"auth_provider_x509_cert_url" json:"auth_provider_x509_cert_url" env:"AUTH_PROVIDER_CERT_URL,overwrite"`
 		RedirectURIS      []string `yaml:"redirect_uris" json:"redirect_uris" env:"REDIRECT_URIS,overwrite"`
 		JavascriptOrigins []string `yaml:"javascript_origins" json:"javascript_origins" env:"JAVASCRIPT_ORIGINS,overwrite"`
-	} `yaml:"oauth" json:"web"`
+	} `yaml:"credentials" json:"web"`
 }
 
 func (zc *OAuthCredentialsConfig) Validate() error {
