@@ -3,7 +3,7 @@ module github.com/ONLYOFFICE/onlyoffice-gdrive
 go 1.19
 
 require (
-	github.com/ONLYOFFICE/onlyoffice-integration-adapters v0.1.1
+	github.com/ONLYOFFICE/onlyoffice-integration-adapters v0.1.2
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/sessions v1.2.1
