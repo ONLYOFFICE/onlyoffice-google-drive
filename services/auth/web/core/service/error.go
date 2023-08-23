@@ -18,7 +18,12 @@
 
 package service
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrOperationTimeout = errors.New("operation timeout")
 
 type InvalidServiceParameterError struct {
 	Name   string

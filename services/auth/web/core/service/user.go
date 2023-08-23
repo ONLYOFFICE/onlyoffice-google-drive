@@ -20,7 +20,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -33,8 +32,6 @@ import (
 	"go-micro.dev/v4/cache"
 	"golang.org/x/oauth2"
 )
-
-var _ErrOperationTimeout = errors.New("operation timeout")
 
 type userService struct {
 	adapter     port.UserAccessServiceAdapter
@@ -98,7 +95,7 @@ func (s userService) CreateUser(ctx context.Context, user domain.UserAccess) err
 	case err := <-errChan:
 		return err
 	case <-ctx.Done():
-		return _ErrOperationTimeout
+		return ErrOperationTimeout
 	default:
 	}
 
@@ -185,7 +182,7 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 	case err := <-errChan:
 		return domain.UserAccess{}, err
 	case <-ctx.Done():
-		return domain.UserAccess{}, _ErrOperationTimeout
+		return domain.UserAccess{}, ErrOperationTimeout
 	default:
 		return domain.UserAccess{
 			ID:           user.ID,
@@ -234,7 +231,7 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 	case err := <-errChan:
 		return user, err
 	case <-ctx.Done():
-		return user, _ErrOperationTimeout
+		return user, ErrOperationTimeout
 	default:
 	}
 
