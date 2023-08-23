@@ -20,7 +20,6 @@ package handler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -43,9 +42,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-var _ErrNoSettingsFound = errors.New("could not find document server settings")
-var _ErrOperationTimeout = errors.New("operation timeout")
-
 type ConfigHandler struct {
 	client      client.Client
 	jwtManager  crypto.JwtManager
@@ -55,7 +51,7 @@ type ConfigHandler struct {
 	credentials *oauth2.Config
 	onlyoffice  *shared.OnlyofficeConfig
 	logger      plog.Logger
-	group       singleflight.Group
+	group       *singleflight.Group
 }
 
 func NewConfigHandler(
@@ -137,7 +133,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	case err := <-errChan:
 		return config, err
 	case <-ctx.Done():
-		return config, _ErrOperationTimeout
+		return config, ErrOperationTimeout
 	default:
 	}
 
