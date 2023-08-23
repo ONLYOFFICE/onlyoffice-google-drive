@@ -82,7 +82,7 @@ func (u UserSelectHandler) GetUser(ctx context.Context, uid *string, res *domain
 				return user, err
 			}
 
-			uctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			uctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
 			user, err = u.service.UpdateUser(uctx, domain.UserAccess{
