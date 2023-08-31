@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
@@ -44,6 +45,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v2"
+	goauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
 )
 
@@ -129,22 +131,32 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 	}
 }
 
-func (c ConvertController) getService(ctx context.Context, uid string) (*drive.Service, error) {
+func (c ConvertController) getServices(ctx context.Context, uid string) (*drive.Service, *goauth.Service, error) {
 	var ures response.UserResponse
 	if err := c.client.Call(ctx, c.client.NewRequest(
 		fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
 		fmt.Sprint(uid),
 	), &ures); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return drive.NewService(ctx, option.WithHTTPClient(
-		c.credentials.Client(ctx, &oauth2.Token{
-			AccessToken:  ures.AccessToken,
-			TokenType:    ures.TokenType,
-			RefreshToken: ures.RefreshToken,
-		})),
-	)
+	client := c.credentials.Client(ctx, &oauth2.Token{
+		AccessToken:  ures.AccessToken,
+		TokenType:    ures.TokenType,
+		RefreshToken: ures.RefreshToken,
+	})
+
+	dsrv, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	asrv, err := goauth.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return dsrv, asrv, nil
 }
 
 func (c ConvertController) BuildConvertPage() http.HandlerFunc {
@@ -166,22 +178,56 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			return
 		}
 
-		session, err := c.store.Get(r, "onlyoffice-auth")
+		srv, asrv, err := c.getServices(tctx, state.UserID)
 		if err != nil {
-			c.logger.Errorf("could not get auth session: %s", err.Error())
+			c.logger.Debugf("could not retreive a gdrive service for user %s. Reason: %s",
+				state.UserID, err.Error())
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
+			return
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+		errChan := make(chan error, 2)
+		fileChan := make(chan *drive.File, 1)
+		userChan := make(chan *goauth.Userinfo, 1)
+
+		go func() {
+			defer wg.Done()
+			file, err := srv.Files.Get(state.IDS[0]).Do()
+			if err != nil {
+				c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
+				errChan <- err
+				return
+			}
+			fileChan <- file
+		}()
+
+		go func() {
+			defer wg.Done()
+			uinfo, err := asrv.Userinfo.Get().Do()
+			if err != nil {
+				c.logger.Errorf("could not get user info: %s", err.Error())
+				errChan <- err
+				return
+			}
+			userChan <- uinfo
+		}()
+
+		wg.Wait()
+
+		select {
+		case <-errChan:
 			http.Redirect(rw, r.WithContext(r.Context()), c.credentials.AuthCodeURL(
 				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
 			), http.StatusSeeOther)
 			return
+		default:
 		}
 
-		locale, ok := session.Values["locale"].(string)
-		if !ok {
-			c.logger.Debug("could not extract locale")
-			locale = "en"
-		}
-
-		loc := i18n.NewLocalizer(embeddable.Bundle, locale)
+		usr := <-userChan
+		file := <-fileChan
+		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 		errMsg = map[string]interface{}{
 			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "errorMain",
@@ -192,23 +238,6 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "reloadButton",
 			}),
-		}
-
-		srv, err := c.getService(tctx, state.UserID)
-		if err != nil {
-			c.logger.Debugf("could not retreive a gdrive service for user %s. Reason: %s",
-				state.UserID, err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
-			return
-		}
-
-		file, err := srv.Files.Get(state.IDS[0]).Do()
-		if err != nil {
-			c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
-			http.Redirect(rw, r.WithContext(r.Context()), c.credentials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
 		}
 
 		c.logger.Debugf("successfully found file with id %s", file.Id)
@@ -273,7 +302,7 @@ func (c ConvertController) convertFile(ctx context.Context, state *request.Drive
 	uctx, cancel := context.WithTimeout(ctx, time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second)
 	defer cancel()
 
-	srv, err := c.getService(uctx, state.UserID)
+	srv, _, err := c.getServices(uctx, state.UserID)
 	if err != nil {
 		c.logger.Errorf("could not retreive a gdrive service for user %s. Reason: %s",
 			state.UserID, err.Error())
