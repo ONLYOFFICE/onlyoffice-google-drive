@@ -110,7 +110,7 @@
         }
 
         .tooltip {
-            transform: translate(40.5%, -70%);
+            transform: translateX(50%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -122,18 +122,6 @@
             -webkit-border-radius: 12px;
             border-radius: 12px;
             box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
-        }
-
-        .tooltip::before {
-            content: "";
-            position: absolute;
-            right: 100%;
-            top: 24px;
-            width: 0;
-            height: 0;
-            border-top: 13px solid transparent;
-            border-right: 26px solid #FFFFFF;
-            border-bottom: 13px solid transparent;
         }
     </style>
 </head>
@@ -188,8 +176,8 @@
                                                 style="padding: 10px; display: flex; justify-content: center; align-items: center;">
                                                 <b style="color: black;">{{.moreInfo}}&nbsp;</b>
                                                 <a style="text-decoration: underline; color: black;"
-                                                    href="https://api.onlyoffice.com/editors/nextcloud#editable">
-                                                    https://api.onlyoffice.com/editors/nextcloud#editable
+                                                    href="https://helpcenter.onlyoffice.com/faq/connectors.aspx">
+                                                    https://helpcenter.onlyoffice.com/faq/connectors.aspx
                                                 </a>
                                             </div>
                                         </div>
