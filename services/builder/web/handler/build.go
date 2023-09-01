@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
@@ -37,9 +36,6 @@ import (
 	"go-micro.dev/v4/client"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/singleflight"
-	"google.golang.org/api/drive/v2"
-	goauth "google.golang.org/api/oauth2/v2"
-	"google.golang.org/api/option"
 )
 
 var group singleflight.Group
@@ -77,66 +73,8 @@ func NewConfigHandler(
 	}
 }
 
-func (c ConfigHandler) processConfig(user response.UserResponse, req request.DriveState, ctx context.Context) (response.ConfigResponse, error) {
+func (c ConfigHandler) processConfig(user response.UserResponse, req request.ConfigRequest, ctx context.Context) (response.ConfigResponse, error) {
 	var config response.ConfigResponse
-	client := c.credentials.Client(ctx, &oauth2.Token{
-		AccessToken:  user.AccessToken,
-		TokenType:    user.TokenType,
-		RefreshToken: user.RefreshToken,
-	})
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	userChan := make(chan *goauth.Userinfo, 1)
-	fileChan := make(chan *drive.File, 1)
-
-	go func() {
-		defer wg.Done()
-		userService, err := goauth.NewService(ctx, option.WithHTTPClient(client))
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		usr, err := userService.Userinfo.Get().Do()
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		userChan <- usr
-	}()
-
-	go func() {
-		defer wg.Done()
-		driveService, err := drive.NewService(ctx, option.WithHTTPClient(client))
-		if err != nil {
-			c.logger.Debugf("could not initialize a new drive service: %s", err.Error())
-			errChan <- err
-			return
-		}
-
-		file, err := driveService.Files.Get(req.IDS[0]).Do()
-		if err != nil {
-			errChan <- err
-			return
-		}
-
-		fileChan <- file
-	}()
-
-	c.logger.Debug("waiting for goroutines to finish")
-	wg.Wait()
-	c.logger.Debug("goroutines have finished")
-
-	select {
-	case err := <-errChan:
-		return config, err
-	case <-ctx.Done():
-		return config, ErrOperationTimeout
-	default:
-	}
 
 	eType := "desktop"
 	ua := useragent.Parse(req.UserAgent)
@@ -146,31 +84,28 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	}
 
 	downloadToken := request.DriveDownloadToken{
-		UserID: req.UserID,
-		FileID: req.IDS[0],
+		UserID: req.UserInfo.Id,
+		FileID: req.FileInfo.Id,
 	}
 	downloadToken.IssuedAt = jwt.NewNumericDate(time.Now())
 	downloadToken.ExpiresAt = jwt.NewNumericDate(time.Now().Add(4 * time.Minute))
 	tkn, _ := c.jwtManager.Sign(c.credentials.ClientSecret, downloadToken)
 
-	file := <-fileChan
-	usr := <-userChan
-
-	filename := c.fileUtil.EscapeFilename(file.Title)
+	filename := c.fileUtil.EscapeFilename(req.FileInfo.Title)
 	config = response.ConfigResponse{
 		Document: response.Document{
-			Key:   string(c.hasher.Hash(file.ModifiedDate + file.Id)),
+			Key:   string(c.hasher.Hash(req.FileInfo.ModifiedDate + req.FileInfo.Id)),
 			Title: filename,
 			URL:   fmt.Sprintf("%s/api/download?token=%s", c.onlyoffice.Onlyoffice.Builder.GatewayURL, tkn),
 		},
 		EditorConfig: response.EditorConfig{
 			User: response.User{
-				ID:   usr.Id,
-				Name: usr.Name,
+				ID:   req.UserInfo.Id,
+				Name: req.UserInfo.Name,
 			},
 			CallbackURL: fmt.Sprintf(
 				"%s/callback?id=%s",
-				c.onlyoffice.Onlyoffice.Builder.CallbackURL, file.Id,
+				c.onlyoffice.Onlyoffice.Builder.CallbackURL, req.FileInfo.Id,
 			),
 			Customization: response.Customization{
 				Goback: response.Goback{
@@ -179,7 +114,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 				Plugins:       false,
 				HideRightMenu: false,
 			},
-			Lang: usr.Locale,
+			Lang: req.UserInfo.Locale,
 		},
 		Type:      eType,
 		ServerURL: c.onlyoffice.Onlyoffice.Builder.DocumentServerURL,
@@ -191,7 +126,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 			err      error
 		)
 		ext := c.fileUtil.GetFileExt(filename)
-		if nExt, ok := shared.GdriveMimeOnlyofficeExtension[file.MimeType]; ok {
+		if nExt, ok := shared.GdriveMimeOnlyofficeExtension[req.FileInfo.MimeType]; ok {
 			fileType, err = c.fileUtil.GetFileType(nExt)
 			ext = nExt
 			config.Document.Title = fmt.Sprintf("%s.%s", filename, ext)
@@ -206,13 +141,13 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 
 		config.Document.FileType = ext
 		config.Document.Permissions = response.Permissions{
-			Edit:                 file.Capabilities.CanEdit && (c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit)),
-			Comment:              file.Capabilities.CanComment,
-			Download:             file.Capabilities.CanDownload,
+			Edit:                 req.FileInfo.Capabilities.CanEdit && (c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit)),
+			Comment:              req.FileInfo.Capabilities.CanComment,
+			Download:             req.FileInfo.Capabilities.CanDownload,
 			Print:                false,
 			Review:               false,
-			Copy:                 file.Capabilities.CanCopy,
-			ModifyContentControl: file.Capabilities.CanModifyContent,
+			Copy:                 req.FileInfo.Capabilities.CanCopy,
+			ModifyContentControl: req.FileInfo.Capabilities.CanModifyContent,
 			ModifyFilter:         true,
 		}
 		config.DocumentType = fileType
@@ -228,21 +163,21 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Dri
 	return config, nil
 }
 
-func (c ConfigHandler) BuildConfig(ctx context.Context, payload request.DriveState, res *response.ConfigResponse) error {
-	c.logger.Debugf("processing a docs config: %s", payload.IDS[0])
-	config, err, _ := group.Do(fmt.Sprintf("config-%s", payload.UserID), func() (interface{}, error) {
+func (c ConfigHandler) BuildConfig(ctx context.Context, request request.ConfigRequest, res *response.ConfigResponse) error {
+	c.logger.Debugf("processing a docs config: %s", request.FileInfo.Id)
+	config, err, _ := group.Do(fmt.Sprintf("config-%s", request.UserInfo.Id), func() (interface{}, error) {
 		req := c.client.NewRequest(
 			fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
-			fmt.Sprint(payload.UserID),
+			fmt.Sprint(request.UserInfo.Id),
 		)
 
 		var ures response.UserResponse
 		if err := c.client.Call(ctx, req, &ures); err != nil {
-			c.logger.Debugf("could not get user %d access info: %s", payload.UserID, err.Error())
+			c.logger.Debugf("could not get user %d access info: %s", request.UserInfo.Id, err.Error())
 			return nil, err
 		}
 
-		config, err := c.processConfig(ures, payload, ctx)
+		config, err := c.processConfig(ures, request, ctx)
 		if err != nil {
 			return nil, err
 		}
