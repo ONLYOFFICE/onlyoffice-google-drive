@@ -1,6 +1,8 @@
 {
     "errorMain": "Sorry, the document cannot be opened",
     "errorSubtext": "Please try again",
+    "errorPermissionsMain": "Sorry, you do not have access rights to the file",
+    "errorPermissionsSubtext": "Please contact the owner of the file",
     "reloadButton": "Reload",
     "cancelButton": "Cancel",
     "openButton": "Open",

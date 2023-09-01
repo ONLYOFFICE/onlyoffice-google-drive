@@ -119,6 +119,22 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
+
+		if !file.Capabilities.CanDownload {
+			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "errorPermissionsMain",
+				}),
+				"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "errorPermissionsSubtext",
+				}),
+				"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "reloadButton",
+				}),
+			})
+			return
+		}
+
 		c.logger.Debugf("successfully found file with id %s", file.Id)
 		_, gdriveFile := shared.GdriveMimeOnlyofficeExtension[file.MimeType]
 		if !file.Capabilities.CanEdit || c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) || gdriveFile {

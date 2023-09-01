@@ -1,6 +1,8 @@
 {
     "errorMain": "Spiacenti, non è possibile aprire il documento",
     "errorSubtext": "Ti preghiamo di riprovare",
+    "errorPermissionsMain": "Sorry, you do not have access rights to the file",
+    "errorPermissionsSubtext": "Please contact the owner of the file",
     "reloadButton": "Ricarica",
     "cancelButton": "Annulla",
     "openButton": "Apri",

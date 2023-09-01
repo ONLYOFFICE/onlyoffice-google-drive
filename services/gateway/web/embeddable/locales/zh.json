@@ -1,6 +1,8 @@
 {
     "errorMain": "对不起，文档无法打开",
     "errorSubtext": "请重试一次",
+    "errorPermissionsMain": "Sorry, you do not have access rights to the file",
+    "errorPermissionsSubtext": "Please contact the owner of the file",
     "reloadButton": "重新加载",
     "cancelButton": "取消",
     "openButton": "打开",
