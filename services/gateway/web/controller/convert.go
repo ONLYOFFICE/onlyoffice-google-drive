@@ -120,7 +120,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 
-		if !file.Capabilities.CanDownload {
+		if !file.Capabilities.CanCopy {
 			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "errorPermissionsMain",
