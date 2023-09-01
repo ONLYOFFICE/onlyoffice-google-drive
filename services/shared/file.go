@@ -29,3 +29,16 @@ var GdriveMimeOnlyofficeMime map[string]string = map[string]string{
 	"application/vnd.google-apps.spreadsheet":  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 	"application/vnd.google-apps.presentation": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
+
+var CreateFileMapper map[string]string = map[string]string{
+	"en":    "en-US",
+	"de":    "de-DE",
+	"es":    "es-ES",
+	"fr":    "fr-FR",
+	"it":    "it-IT",
+	"ja":    "ja-JP",
+	"pt-BR": "pt-BR",
+	"pt-PT": "pt-PT",
+	"ru":    "ru-RU",
+	"zh":    "zh-CN",
+}
