@@ -129,6 +129,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"Locale":         usr.Locale,
+			"Title":          file.OriginalFilename,
 			"OOXML": file.FileExtension != "csv" && (c.fileUtil.
 				IsExtensionOOXMLConvertable(file.FileExtension) || c.fileUtil.IsExtensionLossEditable(file.FileExtension)),
 			"LossEdit": c.fileUtil.IsExtensionLossEditable(file.FileExtension),

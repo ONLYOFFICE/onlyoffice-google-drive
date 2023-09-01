@@ -111,6 +111,7 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 
 		embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"Locale":  usr.Locale,
+			"Title":   file.OriginalFilename,
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", resp.ServerURL),
 			"config":  string(resp.ToBytes()),
 			"docType": resp.DocumentType,
