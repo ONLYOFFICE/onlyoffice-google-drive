@@ -106,7 +106,7 @@ func (zc *OAuthCredentialsConfig) Validate() error {
 	return nil
 }
 
-func (zc *OAuthCredentialsConfig) ToJSON() []byte {
+func (zc *OAuthCredentialsConfig) ToBytes() []byte {
 	buf, _ := json.Marshal(zc)
 	return buf
 }
@@ -207,7 +207,7 @@ func (c *OnlyofficeCallbackConfig) Validate() error {
 
 func BuildNewGoogleCredentialsConfig(config *OAuthCredentialsConfig) *oauth2.Config {
 	credentials, err := google.ConfigFromJSON(
-		config.ToJSON(), drive.DriveMetadataReadonlyScope, drive.DriveFileScope,
+		config.ToBytes(), drive.DriveMetadataReadonlyScope, drive.DriveFileScope,
 		drive.DriveReadonlyScope, DriveInstall, UserInfoProfile, UserInfoEmail,
 	)
 
