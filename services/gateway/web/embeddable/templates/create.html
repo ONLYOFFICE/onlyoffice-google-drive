@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ .Locale }}">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -347,6 +347,7 @@
       <div x-show="loading && !error">{{template "spinner"}}</div>
     </div>
     <script>
+      var locale = "{{ .Locale }}";
       function createForm() {
         document.getElementById("creation").hidden = false;
         document.getElementById("error").hidden = false;
@@ -373,6 +374,7 @@
                 method: "POST",
                 headers: {
                   "X-CSRF-Token": csrfToken,
+                  "Locale": locale,
                 },
                 body: JSON.stringify(state),
               });

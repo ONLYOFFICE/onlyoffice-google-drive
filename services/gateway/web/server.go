@@ -40,6 +40,7 @@ type GdriveHTTPService struct {
 	editorController  controller.EditorController
 	fileController    controller.FileController
 	convertController controller.ConvertController
+	apiController     controller.APIController
 	sessionMiddleware middleware.SessionMiddleware
 	credentials       *oauth2.Config
 }
@@ -50,6 +51,7 @@ func NewServer(
 	editorController controller.EditorController,
 	fileController controller.FileController,
 	convertController controller.ConvertController,
+	apiController controller.APIController,
 	sessionMiddleware middleware.SessionMiddleware,
 	credentialsConfig *shared.OAuthCredentialsConfig,
 	credentials *oauth2.Config,
@@ -61,6 +63,7 @@ func NewServer(
 		editorController:  editorController,
 		fileController:    fileController,
 		convertController: convertController,
+		apiController:     apiController,
 		sessionMiddleware: sessionMiddleware,
 		credentials:       credentials,
 	}
@@ -112,8 +115,8 @@ func (s *GdriveHTTPService) InitializeRoutes() {
 		})
 
 		r.Route("/api", func(cr chi.Router) {
-			cr.Get("/download", s.fileController.BuildDownloadFile())
-			cr.Post("/create", s.fileController.BuildCreateFile())
+			cr.Get("/download", s.apiController.BuildDownloadFile())
+			cr.Post("/create", s.apiController.BuildCreateFile())
 			cr.Post("/convert", s.convertController.BuildConvertFile())
 		})
 

@@ -24,4 +24,5 @@ var (
 	ErrSessionTokenCasting = errors.New("could not cast a session token")
 	ErrUserIdMatching      = errors.New("token uid and state uid do not match")
 	ErrCsvIsNotSupported   = errors.New("csv conversion is not supported")
+	ErrCouldNotExtractData = errors.New("could not extract data from the context")
 )

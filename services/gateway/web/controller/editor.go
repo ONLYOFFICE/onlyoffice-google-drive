@@ -29,37 +29,28 @@ import (
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
-	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go-micro.dev/v4/client"
-	"golang.org/x/oauth2"
+	"google.golang.org/api/drive/v2"
+	goauth "google.golang.org/api/oauth2/v2"
 )
 
 type EditorController struct {
-	client      client.Client
-	jwtManager  crypto.JwtManager
-	store       *sessions.CookieStore
-	server      *config.ServerConfig
-	credentials *oauth2.Config
-	logger      log.Logger
+	client client.Client
+	server *config.ServerConfig
+	logger log.Logger
 }
 
 func NewEditorController(
 	client client.Client,
-	jwtManager crypto.JwtManager,
 	server *config.ServerConfig,
-	credentials *oauth2.Config,
 	logger log.Logger,
 ) EditorController {
 	return EditorController{
-		client:      client,
-		jwtManager:  jwtManager,
-		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
-		server:      server,
-		credentials: credentials,
-		logger:      logger,
+		client: client,
+		server: server,
+		logger: logger,
 	}
 }
 
@@ -68,16 +59,26 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 		rw.Header().Set("Content-Type", "text/html")
 		query := r.URL.Query()
 		qstate := query.Get("state")
+		usr, uok := r.Context().Value("info").(goauth.Userinfo)
+		file, fok := r.Context().Value("file").(drive.File)
 		var state request.DriveState
-		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
+		if err := json.Unmarshal([]byte(qstate), &state); err != nil || !uok || !fok {
 			c.logger.Debug("state is empty")
 			http.Redirect(rw, r, "https://drive.google.com/", http.StatusMovedPermanently)
 			return
 		}
 
+		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 		var resp response.ConfigResponse
 		if err := c.client.Call(r.Context(),
-			c.client.NewRequest(fmt.Sprintf("%s:builder", c.server.Namespace), "ConfigHandler.BuildConfig", state),
+			c.client.NewRequest(
+				fmt.Sprintf("%s:builder", c.server.Namespace), "ConfigHandler.BuildConfig",
+				request.ConfigRequest{
+					UserInfo:  usr,
+					FileInfo:  file,
+					UserAgent: state.UserAgent,
+					ForceEdit: state.ForceEdit,
+				}),
 			&resp,
 		); err != nil {
 			c.logger.Errorf("could not build onlyoffice config: %s", err.Error())
@@ -92,19 +93,26 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 
 			c.logger.Errorf("build config micro error: %s", microErr.Detail)
 			embeddable.ErrorPage.Execute(rw, map[string]interface{}{
-				"errorMain":    "Sorry, the document cannot be opened",
-				"errorSubtext": "Please try again",
-				"reloadButton": "Reload",
+				"Locale": usr.Locale,
+				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "errorMain",
+				}),
+				"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "errorSubtext",
+				}),
+				"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "reloadButton",
+				}),
 			})
 			return
 		}
 
 		c.logger.Debug("successfully saved a new session cookie")
 
-		loc := i18n.NewLocalizer(embeddable.Bundle, resp.EditorConfig.Lang)
 		embeddable.EditorPage.Execute(rw, map[string]interface{}{
+			"Locale":  usr.Locale,
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", resp.ServerURL),
-			"config":  string(resp.ToJSON()),
+			"config":  string(resp.ToBytes()),
 			"docType": resp.DocumentType,
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "cancelButton",

@@ -19,63 +19,37 @@
 package controller
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"path/filepath"
-	"sync"
-	"time"
 
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/gateway/web/embeddable"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared"
 	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/request"
-	"github.com/ONLYOFFICE/onlyoffice-gdrive/services/shared/response"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/config"
-	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/crypto"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/log"
 	"github.com/ONLYOFFICE/onlyoffice-integration-adapters/onlyoffice"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/sessions"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"go-micro.dev/v4/client"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v2"
 	goauth "google.golang.org/api/oauth2/v2"
-	"google.golang.org/api/option"
 )
 
 type ConvertController struct {
-	client      client.Client
-	jwtManager  crypto.JwtManager
-	fileUtil    onlyoffice.OnlyofficeFileUtility
-	store       *sessions.CookieStore
-	server      *config.ServerConfig
-	credentials *oauth2.Config
-	onlyoffice  *shared.OnlyofficeConfig
-	hasher      crypto.Hasher
-	logger      log.Logger
+	fileUtil      onlyoffice.OnlyofficeFileUtility
+	apiController APIController
+	logger        log.Logger
 }
 
 func NewConvertController(
-	client client.Client, jwtManager crypto.JwtManager,
-	fileUtil onlyoffice.OnlyofficeFileUtility, onlyoffice *shared.OnlyofficeConfig, hasher crypto.Hasher,
-	server *config.ServerConfig, credentials *oauth2.Config, logger log.Logger,
+	fileUtil onlyoffice.OnlyofficeFileUtility,
+	apiController APIController,
+	logger log.Logger,
 ) ConvertController {
 	return ConvertController{
-		client:      client,
-		jwtManager:  jwtManager,
-		fileUtil:    fileUtil,
-		store:       sessions.NewCookieStore([]byte(credentials.ClientSecret)),
-		server:      server,
-		credentials: credentials,
-		onlyoffice:  onlyoffice,
-		hasher:      hasher,
-		logger:      logger,
+		fileUtil:      fileUtil,
+		apiController: apiController,
+		logger:        logger,
 	}
 }
 
@@ -95,7 +69,7 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 				rw, r,
 				fmt.Sprintf(
 					"/editor?state=%s",
-					url.QueryEscape(string(state.ToJSON())),
+					url.QueryEscape(string(state.ToBytes())),
 				),
 				http.StatusMovedPermanently,
 			)
@@ -105,12 +79,12 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 				rw, r,
 				fmt.Sprintf(
 					"/editor?state=%s",
-					url.QueryEscape(string(state.ToJSON())),
+					url.QueryEscape(string(state.ToBytes())),
 				),
 				http.StatusMovedPermanently,
 			)
 		case "create":
-			nstate, err := c.convertFile(r.Context(), &state)
+			nstate, err := c.apiController.convertFile(r.Context(), &state)
 			if err != nil {
 				rw.WriteHeader(http.StatusInternalServerError)
 				return
@@ -119,7 +93,7 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 				rw, r,
 				fmt.Sprintf(
 					"/editor?state=%s",
-					url.QueryEscape(string(nstate.ToJSON())),
+					url.QueryEscape(string(nstate.ToBytes())),
 				),
 				http.StatusMovedPermanently,
 			)
@@ -131,115 +105,20 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 	}
 }
 
-func (c ConvertController) getServices(ctx context.Context, uid string) (*drive.Service, *goauth.Service, error) {
-	var ures response.UserResponse
-	if err := c.client.Call(ctx, c.client.NewRequest(
-		fmt.Sprintf("%s:auth", c.server.Namespace), "UserSelectHandler.GetUser",
-		fmt.Sprint(uid),
-	), &ures); err != nil {
-		return nil, nil, err
-	}
-
-	client := c.credentials.Client(ctx, &oauth2.Token{
-		AccessToken:  ures.AccessToken,
-		TokenType:    ures.TokenType,
-		RefreshToken: ures.RefreshToken,
-	})
-
-	dsrv, err := drive.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	asrv, err := goauth.NewService(ctx, option.WithHTTPClient(client))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return dsrv, asrv, nil
-}
-
 func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/html")
 		qstate := r.URL.Query().Get("state")
-		tctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		errMsg := map[string]interface{}{
-			"errorMain":    "Sorry, the document cannot be opened",
-			"errorSubtext": "Please try again",
-			"reloadButton": "Reload",
-		}
-
+		usr, uok := r.Context().Value("info").(goauth.Userinfo)
+		file, fok := r.Context().Value("file").(drive.File)
 		var state request.DriveState
-		if err := json.Unmarshal([]byte(qstate), &state); err != nil {
-			c.logger.Debug("could not unmarshal state")
+		if err := json.Unmarshal([]byte(qstate), &state); err != nil || !uok || !fok {
+			c.logger.Debug("could not unmarshal state or get session data")
 			http.Redirect(rw, r, "https://drive.google.com", http.StatusMovedPermanently)
 			return
 		}
 
-		srv, asrv, err := c.getServices(tctx, state.UserID)
-		if err != nil {
-			c.logger.Debugf("could not retreive a gdrive service for user %s. Reason: %s",
-				state.UserID, err.Error())
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", errMsg)
-			return
-		}
-
-		var wg sync.WaitGroup
-		wg.Add(2)
-		errChan := make(chan error, 2)
-		fileChan := make(chan *drive.File, 1)
-		userChan := make(chan *goauth.Userinfo, 1)
-
-		go func() {
-			defer wg.Done()
-			file, err := srv.Files.Get(state.IDS[0]).Do()
-			if err != nil {
-				c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
-				errChan <- err
-				return
-			}
-			fileChan <- file
-		}()
-
-		go func() {
-			defer wg.Done()
-			uinfo, err := asrv.Userinfo.Get().Do()
-			if err != nil {
-				c.logger.Errorf("could not get user info: %s", err.Error())
-				errChan <- err
-				return
-			}
-			userChan <- uinfo
-		}()
-
-		wg.Wait()
-
-		select {
-		case <-errChan:
-			http.Redirect(rw, r.WithContext(r.Context()), c.credentials.AuthCodeURL(
-				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
-			), http.StatusSeeOther)
-			return
-		default:
-		}
-
-		usr := <-userChan
-		file := <-fileChan
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
-		errMsg = map[string]interface{}{
-			"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorMain",
-			}),
-			"errorSubtext": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "errorSubtext",
-			}),
-			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "reloadButton",
-			}),
-		}
-
 		c.logger.Debugf("successfully found file with id %s", file.Id)
 		_, gdriveFile := shared.GdriveMimeOnlyofficeExtension[file.MimeType]
 		if c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) || gdriveFile {
@@ -249,6 +128,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 
 		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
+			"Locale":         usr.Locale,
 			"OOXML": file.FileExtension != "csv" && (c.fileUtil.
 				IsExtensionOOXMLConvertable(file.FileExtension) || c.fileUtil.IsExtensionLossEditable(file.FileExtension)),
 			"LossEdit": c.fileUtil.IsExtensionLossEditable(file.FileExtension),
@@ -296,124 +176,4 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			}),
 		})
 	}
-}
-
-func (c ConvertController) convertFile(ctx context.Context, state *request.DriveState) (*request.DriveState, error) {
-	uctx, cancel := context.WithTimeout(ctx, time.Duration(c.onlyoffice.Onlyoffice.Callback.UploadTimeout)*time.Second)
-	defer cancel()
-
-	srv, _, err := c.getServices(uctx, state.UserID)
-	if err != nil {
-		c.logger.Errorf("could not retreive a gdrive service for user %s. Reason: %s",
-			state.UserID, err.Error())
-		return nil, err
-	}
-
-	file, err := srv.Files.Get(state.IDS[0]).Do()
-	if err != nil {
-		c.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
-		return nil, err
-	}
-
-	downloadToken := &request.DriveDownloadToken{
-		UserID: state.UserID,
-		FileID: state.IDS[0],
-	}
-	downloadToken.IssuedAt = jwt.NewNumericDate(time.Now())
-	downloadToken.ExpiresAt = jwt.NewNumericDate(time.Now().Add(4 * time.Minute))
-	tkn, err := c.jwtManager.Sign(c.credentials.ClientSecret, downloadToken)
-	if err != nil {
-		c.logger.Errorf("could not issue a jwt: %s", err.Error())
-		return nil, err
-	}
-
-	var cresp response.ConvertResponse
-	fType, err := c.fileUtil.GetFileType(file.FileExtension)
-	if err != nil {
-		c.logger.Errorf("could not get file type: %s", err.Error())
-		return nil, err
-	}
-
-	creq := request.ConvertRequest{
-		Async:      false,
-		Filetype:   fType,
-		Key:        c.hasher.Hash(file.Id + time.Now().String()),
-		Outputtype: "ooxml",
-		URL: fmt.Sprintf(
-			"%s/api/download?token=%s", c.onlyoffice.Onlyoffice.Builder.GatewayURL,
-			tkn,
-		),
-	}
-	creq.IssuedAt = jwt.NewNumericDate(time.Now())
-	creq.ExpiresAt = jwt.NewNumericDate(time.Now().Add(2 * time.Minute))
-	ctok, err := c.jwtManager.Sign(c.onlyoffice.Onlyoffice.Builder.DocumentServerSecret, creq)
-	if err != nil {
-		return nil, err
-	}
-
-	creq.Token = ctok
-	req, err := http.NewRequestWithContext(
-		uctx,
-		"POST",
-		fmt.Sprintf("%s/ConvertService.ashx", c.onlyoffice.Onlyoffice.Builder.DocumentServerURL),
-		bytes.NewBuffer(creq.ToJSON()),
-	)
-
-	if err != nil {
-		c.logger.Errorf("could not build a conversion api request: %s", err.Error())
-		return nil, err
-	}
-
-	req.Header.Set("Accept", "application/json")
-	resp, err := otelhttp.DefaultClient.Do(req)
-	if err != nil {
-		c.logger.Errorf("could not send a conversion api request: %s", err.Error())
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(&cresp); err != nil {
-		c.logger.Errorf("could not decode convert response body: %s", err.Error())
-		return nil, err
-	}
-
-	cfile, err := otelhttp.Get(uctx, cresp.FileURL)
-	if err != nil {
-		c.logger.Errorf("could not retreive a converted file: %s", err.Error())
-		return nil, err
-	}
-
-	defer cfile.Body.Close()
-	now := time.Now().Format(time.RFC3339)
-	filename := fmt.Sprintf("%s.%s", file.Title[:len(file.Title)-len(filepath.Ext(file.Title))], cresp.FileType)
-
-	file, err = srv.Files.Insert(&drive.File{
-		DriveId:                      file.DriveId,
-		CreatedDate:                  now,
-		ModifiedDate:                 now,
-		ModifiedByMeDate:             now,
-		Capabilities:                 file.Capabilities,
-		ContentRestrictions:          file.ContentRestrictions,
-		CopyRequiresWriterPermission: file.CopyRequiresWriterPermission,
-		DefaultOpenWithLink:          file.DefaultOpenWithLink,
-		Description:                  file.Description,
-		FileExtension:                cresp.FileType,
-		OriginalFilename:             filename,
-		OwnedByMe:                    true,
-		Title:                        filename,
-		Parents:                      file.Parents,
-		MimeType:                     shared.MimeTypes[cresp.FileType],
-	}).Context(uctx).Media(cfile.Body).Do()
-
-	if err != nil {
-		c.logger.Errorf("could not modify file %s: %s", state.IDS[0], err.Error())
-		return nil, err
-	}
-
-	return &request.DriveState{
-		IDS:       []string{file.Id},
-		Action:    state.Action,
-		UserID:    state.UserID,
-		UserAgent: state.UserAgent,
-	}, nil
 }

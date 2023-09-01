@@ -122,7 +122,6 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 
 			session, _ := c.store.Get(r, "onlyoffice-auth")
 			session.Values["token"] = signature
-			session.Values["locale"] = uinfo.Locale
 			session.Options.MaxAge = 60 * 60 * 23 * 7
 			if err := session.Save(r, rw); err != nil {
 				c.logger.Errorf("could not save a new session cookie: %s", err.Error())

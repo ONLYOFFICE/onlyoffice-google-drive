@@ -49,5 +49,5 @@ func init() {
 		panic(err)
 	}
 
-	Bundle.MustAddMessages(emsg.Tag, rmsg.Messages...)
+	Bundle.MustAddMessages(rmsg.Tag, rmsg.Messages...)
 }

@@ -51,6 +51,7 @@ func Server() *cli.Command {
 					shared.BuildNewOnlyofficeConfig(CONFIG_PATH), shared.BuildNewGoogleCredentialsConfig,
 					controller.NewAuthController, controller.NewEditorController,
 					controller.NewFileController, controller.NewConvertController,
+					controller.NewAPIController,
 					middleware.NewSessionMiddleware,
 					chttp.NewService, web.NewServer,
 				),
