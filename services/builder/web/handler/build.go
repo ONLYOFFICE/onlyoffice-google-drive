@@ -144,7 +144,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Con
 			Edit:                 req.FileInfo.Capabilities.CanEdit && (c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit)),
 			Comment:              true,
 			Download:             req.FileInfo.Capabilities.CanDownload,
-			Print:                false,
+			Print:                true,
 			Review:               false,
 			Copy:                 req.FileInfo.Capabilities.CanCopy,
 			ModifyContentControl: req.FileInfo.Capabilities.CanModifyContent,
