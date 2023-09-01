@@ -220,7 +220,7 @@ func (c CallbackController) sendErrorResponse(errorText string, rw http.Response
 	rw.WriteHeader(http.StatusBadRequest)
 	rw.Write(response.CallbackResponse{
 		Error: 1,
-	}.ToJSON())
+	}.ToBytes())
 }
 
 func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
@@ -256,6 +256,6 @@ func (c CallbackController) BuildPostHandleCallback() http.HandlerFunc {
 		rw.WriteHeader(http.StatusOK)
 		rw.Write(response.CallbackResponse{
 			Error: 0,
-		}.ToJSON())
+		}.ToBytes())
 	}
 }
