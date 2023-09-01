@@ -35,7 +35,7 @@ type DriveState struct {
 	ForceEdit bool     `json:"forceEdit"`
 }
 
-func (c DriveState) ToJSON() []byte {
+func (c DriveState) ToBytes() []byte {
 	buf, _ := json.Marshal(c)
 	return buf
 }
@@ -44,9 +44,4 @@ type DriveDownloadToken struct {
 	jwt.RegisteredClaims
 	UserID string `json:"userId"`
 	FileID string `json:"fileId"`
-}
-
-func (c DriveDownloadToken) ToJSON() []byte {
-	buf, _ := json.Marshal(c)
-	return buf
 }

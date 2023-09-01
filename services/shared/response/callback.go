@@ -24,7 +24,7 @@ type CallbackResponse struct {
 	Error int `json:"error"`
 }
 
-func (c CallbackResponse) ToJSON() []byte {
+func (c CallbackResponse) ToBytes() []byte {
 	buf, _ := json.Marshal(c)
 	return buf
 }

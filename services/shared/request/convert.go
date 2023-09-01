@@ -34,7 +34,7 @@ type ConvertRequest struct {
 	Token      string `json:"token,omitempty"`
 }
 
-func (r ConvertRequest) ToJSON() []byte {
+func (r ConvertRequest) ToBytes() []byte {
 	buf, _ := json.Marshal(r)
 	return buf
 }

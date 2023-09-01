@@ -35,7 +35,7 @@ type ConfigResponse struct {
 	ServerURL    string       `json:"server_url"`
 }
 
-func (r ConfigResponse) ToJSON() []byte {
+func (r ConfigResponse) ToBytes() []byte {
 	buf, _ := json.Marshal(r)
 	return buf
 }
