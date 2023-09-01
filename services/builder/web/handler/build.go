@@ -142,7 +142,7 @@ func (c ConfigHandler) processConfig(user response.UserResponse, req request.Con
 		config.Document.FileType = ext
 		config.Document.Permissions = response.Permissions{
 			Edit:                 req.FileInfo.Capabilities.CanEdit && (c.fileUtil.IsExtensionEditable(ext) || (c.fileUtil.IsExtensionLossEditable(ext) && req.ForceEdit)),
-			Comment:              req.FileInfo.Capabilities.CanComment,
+			Comment:              true,
 			Download:             req.FileInfo.Capabilities.CanDownload,
 			Print:                false,
 			Review:               false,
