@@ -234,6 +234,7 @@
                                     </p>
                                 </button>
                             </div>
+                            {{ .csrfField }}
                         </form>
                     </div>
                 </div>
@@ -247,9 +248,6 @@
         </div>
     </div>
     <script>
-        var token = "{{.CSRF}}";
-        var user = "{{.User}}";
-        var file = "{{.File}}";
         function convertForm() {
             document.getElementById("conversion").hidden = false;
             document.getElementById("error").hidden = false;
@@ -270,20 +268,18 @@
                 async submit() {
                     this.loading = true;
                     this.error = false;
+                    const csrfToken = document.getElementsByName("gorilla.csrf.Token")[0].value;
                     const urlSearchParams = new URLSearchParams(window.location.search);
                     const params = Object.fromEntries(urlSearchParams.entries());
                     try {
-                        const resp = await fetch(`/convert?user=${user}`, {
+                        const state = JSON.parse(params.state || '{}');
+                        state.action = this.action;
+                        const resp = await fetch(`/api/convert`, {
                             method: 'POST',
                             headers: {
-                                "X-CSRF-Token": token,
+                                'X-CSRF-Token': csrfToken,
                             },
-                            body: JSON.stringify({
-                                action: this.action,
-                                user_id: user,
-                                file_id: file,
-                                force_edit: this.action === 'edit',
-                            }),
+                            body: JSON.stringify(state),
                         });
 
                         if (resp.status >= 300) throw new Error('could not convert a file');
@@ -294,7 +290,7 @@
                     } catch {
                         this.error = true;
                         this.loading = false;
-                    }
+                    } 
                 },
             };
         }
