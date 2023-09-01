@@ -121,7 +121,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 		c.logger.Debugf("successfully found file with id %s", file.Id)
 		_, gdriveFile := shared.GdriveMimeOnlyofficeExtension[file.MimeType]
-		if c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) || gdriveFile {
+		if !file.Capabilities.CanEdit || c.fileUtil.IsExtensionEditable(file.FileExtension) || c.fileUtil.IsExtensionViewOnly(file.FileExtension) || gdriveFile {
 			http.Redirect(rw, r, fmt.Sprintf("/editor?state=%s", qstate), http.StatusMovedPermanently)
 			return
 		}
