@@ -57,6 +57,13 @@
         border: 1px solid #3db8ec;
       }
 
+      .tile_text {
+        width: 140px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       .filename-input {
         height: 36px;
         width: 96%;
@@ -199,7 +206,7 @@
                   />
                 </svg>
               </div>
-              <div>{{.createDocx}}</div>
+              <div class="tile_text" title="{{ .createDocx }}">{{.createDocx}}</div>
             </div>
             <div
               class="tile"
@@ -244,7 +251,7 @@
                   />
                 </svg>
               </div>
-              <div>{{.createXlsx}}</div>
+              <div class="tile_text" title="{{ .createXlsx }}">{{.createXlsx}}</div>
             </div>
             <div
               class="tile"
@@ -304,7 +311,7 @@
                   />
                 </svg>
               </div>
-              <div>{{.createPptx}}</div>
+              <div class="tile_text" title="{{ .createPptx }}">{{.createPptx}}</div>
             </div>
           </div>
           <div
