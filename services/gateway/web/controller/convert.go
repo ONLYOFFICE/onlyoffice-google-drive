@@ -107,7 +107,6 @@ func (c ConvertController) BuildConvertFile() http.HandlerFunc {
 
 func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		rw.Header().Set("Content-Type", "text/html")
 		qstate := r.URL.Query().Get("state")
 		usr, uok := r.Context().Value("info").(goauth.Userinfo)
 		file, fok := r.Context().Value("file").(drive.File)
@@ -142,6 +141,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			return
 		}
 
+		rw.Header().Set("Content-Type", "text/html")
 		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"Locale":         usr.Locale,
