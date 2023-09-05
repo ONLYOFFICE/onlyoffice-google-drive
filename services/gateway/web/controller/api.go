@@ -261,7 +261,9 @@ func (c APIController) BuildDownloadFile() http.HandlerFunc {
 			}
 
 			defer resp.Body.Close()
-			io.Copy(rw, resp.Body)
+			if _, err := io.Copy(rw, resp.Body); err != nil {
+				c.logger.Errorf("could not copy gdrive file to response: %w", err)
+			}
 		} else {
 			resp, err := srv.Files.Get(dtoken.FileID).Download()
 			if err != nil {
@@ -271,7 +273,9 @@ func (c APIController) BuildDownloadFile() http.HandlerFunc {
 			}
 
 			defer resp.Body.Close()
-			io.Copy(rw, resp.Body)
+			if _, err := io.Copy(rw, resp.Body); err != nil {
+				c.logger.Errorf("could not copy gdrive file to response: %w", err)
+			}
 		}
 	}
 }

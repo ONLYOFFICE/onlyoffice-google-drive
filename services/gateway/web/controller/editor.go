@@ -92,7 +92,7 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 			}
 
 			c.logger.Errorf("build config micro error: %s", microErr.Detail)
-			embeddable.ErrorPage.Execute(rw, map[string]interface{}{
+			if err := embeddable.ErrorPage.Execute(rw, map[string]interface{}{
 				"Locale": usr.Locale,
 				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "errorMain",
@@ -103,13 +103,15 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 				"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "reloadButton",
 				}),
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		}
 
 		c.logger.Debug("successfully saved a new session cookie")
 
-		embeddable.EditorPage.Execute(rw, map[string]interface{}{
+		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"Locale":  usr.Locale,
 			"Title":   file.OriginalFilename,
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", resp.ServerURL),
@@ -118,6 +120,8 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 			"cancelButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "cancelButton",
 			}),
-		})
+		}); err != nil {
+			c.logger.Errorf("could not execute an editor template: %w", err)
+		}
 	}
 }

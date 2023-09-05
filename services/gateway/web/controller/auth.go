@@ -76,7 +76,7 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 			return
 		}
 
-		group.Do(code, func() (interface{}, error) {
+		if _, err, _ := group.Do(code, func() (interface{}, error) {
 			token, err := c.oauth.Exchange(r.Context(), code)
 			if err != nil {
 				c.logger.Errorf("could not get gdrive access token: %s", err.Error())
@@ -129,7 +129,9 @@ func (c AuthController) BuildGetAuth() http.HandlerFunc {
 			}
 
 			return nil, nil
-		})
+		}); err != nil {
+			c.logger.Debugf("error details: %w", err)
+		}
 
 		http.Redirect(rw, r, "https://drive.google.com/", http.StatusMovedPermanently)
 	}

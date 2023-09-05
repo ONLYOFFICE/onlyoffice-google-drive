@@ -90,11 +90,13 @@ func (c SessionMiddleware) getServices(ctx context.Context, user response.UserRe
 
 func (m SessionMiddleware) renderError(rw http.ResponseWriter) {
 	rw.Header().Set("Content-Type", "text/html")
-	embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+	if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 		"errorMain":    "Sorry, the document cannot be opened",
 		"errorSubtext": "Please try again",
 		"reloadButton": "Reload",
-	})
+	}); err != nil {
+		m.logger.Errorf("could not execute an error template: %w", err)
+	}
 }
 
 // TODO: Caching
@@ -120,7 +122,9 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if !ok {
 			m.logger.Debug("could not cast token to string")
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Errorf("could not save a cookie session: %w", err)
+			}
 			http.Redirect(rw, r.WithContext(r.Context()), m.credentials.AuthCodeURL(
 				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
 			), http.StatusSeeOther)
@@ -131,7 +135,9 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if err := m.jwtManager.Verify(m.credentials.ClientSecret, val, &token); err != nil {
 			m.logger.Debugf("could not verify session token: %s", err.Error())
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Errorf("could not save a cookie session: %w", err)
+			}
 			http.Redirect(rw, r.WithContext(r.Context()), m.credentials.AuthCodeURL(
 				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
 			), http.StatusSeeOther)
@@ -141,7 +147,9 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		if token["jti"] != state.UserID {
 			m.logger.Debugf("user % doesn't match state user %s", token["jti"], state.UserID)
 			session.Options.MaxAge = -1
-			session.Save(r, rw)
+			if err := session.Save(r, rw); err != nil {
+				m.logger.Errorf("could not save a cookie session: %w", err)
+			}
 			http.Redirect(rw, r.WithContext(r.Context()), m.credentials.AuthCodeURL(
 				"state-token", oauth2.AccessTypeOffline, oauth2.ApprovalForce,
 			), http.StatusSeeOther)
@@ -224,6 +232,7 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 
 		m.logger.Debugf("refreshed current session: %s", signature)
 
+		// nolint:staticcheck
 		next.ServeHTTP(rw, r.WithContext(
 			context.WithValue(
 				context.WithValue(

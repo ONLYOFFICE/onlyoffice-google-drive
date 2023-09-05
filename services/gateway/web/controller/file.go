@@ -61,7 +61,7 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 		}
 
 		loc := i18n.NewLocalizer(embeddable.Bundle, user.Locale)
-		embeddable.CreationPage.Execute(rw, map[string]interface{}{
+		if err := embeddable.CreationPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"Locale":         user.Locale,
 			"createFilePlaceholder": loc.MustLocalize(&i18n.LocalizeConfig{
@@ -97,6 +97,8 @@ func (c FileController) BuildCreateFilePage() http.HandlerFunc {
 			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "reloadButton",
 			}),
-		})
+		}); err != nil {
+			c.logger.Errorf("could not execute a creation template: %w", err)
+		}
 	}
 }

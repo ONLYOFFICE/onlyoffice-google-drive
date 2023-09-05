@@ -151,7 +151,9 @@ func (s userService) GetUser(ctx context.Context, uid string) (domain.UserAccess
 			return user, err
 		}
 
-		s.cache.Put(ctx, id, user, time.Duration((exp.UnixMilli()-10)*1e6/6))
+		if err := s.cache.Put(ctx, id, user, time.Duration((exp.UnixMilli()-10)*1e6/6)); err != nil {
+			s.logger.Warnf("could not put user into the cache: %w", err)
+		}
 	}
 
 	s.logger.Debugf("found a user: %v", user)
@@ -251,7 +253,9 @@ func (s userService) UpdateUser(ctx context.Context, user domain.UserAccess) (do
 
 	if err := s.cache.Put(ctx, euser.ID, euser, time.Duration((exp.UnixMilli()-10)*1e6/6)); err != nil {
 		s.logger.Warnf("could not populate cache with a user %s instance: %s", euser.ID, err.Error())
-		s.cache.Delete(ctx, euser.ID)
+		if err := s.cache.Delete(ctx, euser.ID); err != nil {
+			s.logger.Warnf("could not remove user from the cache: %w", err)
+		}
 	}
 
 	s.logger.Debugf("user %s is valid to perform an update action", user.ID)

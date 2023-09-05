@@ -120,7 +120,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 
 		if !file.Capabilities.CanCopy {
-			embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
+			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "errorPermissionsMain",
 				}),
@@ -130,7 +130,9 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 				"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "reloadButton",
 				}),
-			})
+			}); err != nil {
+				c.logger.Errorf("could not execute an error template: %w", err)
+			}
 			return
 		}
 
@@ -142,7 +144,7 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 		}
 
 		rw.Header().Set("Content-Type", "text/html")
-		embeddable.ConvertPage.Execute(rw, map[string]interface{}{
+		if err := embeddable.ConvertPage.Execute(rw, map[string]interface{}{
 			csrf.TemplateTag: csrf.TemplateField(r),
 			"Locale":         usr.Locale,
 			"Title":          file.OriginalFilename,
@@ -191,6 +193,8 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 			"reloadButton": loc.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "reloadButton",
 			}),
-		})
+		}); err != nil {
+			c.logger.Errorf("could not execute an error template: %w", err)
+		}
 	}
 }
