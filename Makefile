@@ -50,6 +50,7 @@ test/cover:
 run/auth:
 	@go run $(SERVICES_DIR)/auth/main.go server -c $(SERVICES_DIR)/auth/config/config.yml
 
+## run/builder: start dev builder service
 .PHONY: run/builder
 run/builder:
 	@go run $(SERVICES_DIR)/builder/main.go server -c $(SERVICES_DIR)/builder/config/config.yml
@@ -59,7 +60,7 @@ run/builder:
 run/callback:
 	@go run $(SERVICES_DIR)/callback/main.go server -c $(SERVICES_DIR)/callback/config/config.yml
 
-## run/gateway: starts gateway auth service
+## run/gateway: starts gateway gateway service
 .PHONY: run/gateway
 run/gateway:
 	@go run $(SERVICES_DIR)/gateway/main.go server -c $(SERVICES_DIR)/gateway/config/config.yml
