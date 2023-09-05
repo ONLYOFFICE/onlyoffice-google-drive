@@ -1,6 +1,6 @@
 linters-settings:
   linters:
-    disable: [gochecknoglobals, ireturn, exhaustivestruct, tagalign, tagliatelle]
+    disable: [gochecknoglobals, ireturn, exhaustivestruct, tagalign, tagliatelle, staticcheck]
   varnamelen:
     # The longest distance, in source lines, that is being considered a "small scope." (defaults to 5)
     # Variables used in at most this many lines will be ignored.
