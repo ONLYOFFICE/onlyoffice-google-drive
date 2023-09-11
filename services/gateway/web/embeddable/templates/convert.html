@@ -113,8 +113,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 522px;
+            width: 473px;
             height: 68px;
+            padding: 24px, 32px, 24px, 32px;
+            gap: 16px;
             background: #FFFFFF;
             position: relative;
             -moz-border-radius: 12px;
@@ -127,12 +129,12 @@
             content: "";
             position: absolute;
             right: 100%;
-            top: 24px;
+            top: 28px;
             width: 0;
             height: 0;
-            border-top: 13px solid transparent;
-            border-right: 26px solid #FFFFFF;
-            border-bottom: 13px solid transparent;
+            border-top: 8px solid transparent;
+            border-right: 8px solid #FFFFFF;
+            border-bottom: 8px solid transparent;
         }
 
         .buttontext {
@@ -202,7 +204,7 @@
                                     <div id="tooltip-container" style="position: absolute;">
                                         <div id="tooltip" x-show="tooltip">
                                             <div
-                                                style="padding: 10px; display: flex; justify-content: center; align-items: center;">
+                                                style="display: flex; justify-content: center; align-items: center;">
                                                 <b style="color: black;">{{.moreInfo}}&nbsp;</b>
                                                 <a style="text-decoration: underline; color: black;"
                                                     href="https://helpcenter.onlyoffice.com/faq/connectors.aspx">
