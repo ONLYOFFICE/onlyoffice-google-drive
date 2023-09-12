@@ -191,8 +191,10 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		go func() {
 			defer wg.Done()
 			m.logger.Debugf("state has %d file ids", len(state.IDS))
-			id := state.IDS[0]
-			if id == "" {
+			id := ""
+			if len(state.IDS) > 0 {
+				id = state.IDS[0]
+			} else if len(state.ExportIDS) > 0 {
 				id = state.ExportIDS[0]
 			}
 
