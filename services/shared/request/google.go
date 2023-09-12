@@ -28,6 +28,7 @@ type DriveState struct {
 	jwt.RegisteredClaims
 	Action    string   `json:"action"`
 	IDS       []string `json:"ids"`
+	ExportIDS []string `json:"exportIds"`
 	FolderID  string   `json:"folderId"`
 	UserID    string   `json:"userId"`
 	UserAgent string   `json:"userAgent,omitempty"`

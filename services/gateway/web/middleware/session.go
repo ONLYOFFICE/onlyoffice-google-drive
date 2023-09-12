@@ -191,10 +191,15 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 		go func() {
 			defer wg.Done()
 			m.logger.Debugf("state has %d file ids", len(state.IDS))
-			if len(state.IDS) > 0 {
-				file, err := srv.Files.Get(state.IDS[0]).Do()
+			id := state.IDS[0]
+			if id == "" {
+				id = state.ExportIDS[0]
+			}
+
+			if id != "" {
+				file, err := srv.Files.Get(id).Do()
 				if err != nil {
-					m.logger.Errorf("could not get file %s: %s", state.IDS[0], err.Error())
+					m.logger.Errorf("could not get file %s: %s", id, err.Error())
 					errChan <- err
 					return
 				}
@@ -211,7 +216,7 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 			}
 
 			m.logger.Debugf("setting an empty file")
-			fileChan <- drive.File{}
+			errChan <- ErrEmptyResponse
 		}()
 
 		go func() {

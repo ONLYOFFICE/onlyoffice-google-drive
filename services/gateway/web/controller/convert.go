@@ -119,9 +119,6 @@ func (c ConvertController) BuildConvertPage() http.HandlerFunc {
 
 		loc := i18n.NewLocalizer(embeddable.Bundle, usr.Locale)
 
-		fmt.Println("=======")
-		fmt.Println(file.Capabilities.CanCopy)
-		fmt.Println("=======")
 		if !file.Capabilities.CanCopy {
 			if err := embeddable.ErrorPage.ExecuteTemplate(rw, "error", map[string]interface{}{
 				"errorMain": loc.MustLocalize(&i18n.LocalizeConfig{
