@@ -21,6 +21,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -40,6 +41,10 @@ import (
 	"google.golang.org/api/drive/v2"
 	goauth "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
+)
+
+var (
+	ErrEmptyResponse = errors.New("got a nil response")
 )
 
 type SessionMiddleware struct {
@@ -185,6 +190,7 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 
 		go func() {
 			defer wg.Done()
+			m.logger.Debugf("state has %d file ids", len(state.IDS))
 			if len(state.IDS) > 0 {
 				file, err := srv.Files.Get(state.IDS[0]).Do()
 				if err != nil {
@@ -192,9 +198,19 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 					errChan <- err
 					return
 				}
+
+				if file == nil {
+					m.logger.Errorf("got a nil pointer to gdrive file")
+					errChan <- ErrEmptyResponse
+					return
+				}
+
+				m.logger.Debugf("found a file %s", file.Id)
 				fileChan <- *file
 				return
 			}
+
+			m.logger.Debugf("setting an empty file")
 			fileChan <- drive.File{}
 		}()
 
@@ -206,6 +222,14 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 				errChan <- err
 				return
 			}
+
+			if uinfo == nil {
+				m.logger.Errorf("got a nil pointer to gdrive user info")
+				errChan <- ErrEmptyResponse
+				return
+			}
+
+			m.logger.Debugf("got user info with id %s", uinfo.Id)
 			userChan <- *uinfo
 		}()
 

@@ -25,9 +25,6 @@ import (
 
 func BuildNewUserAdapter(config *config.StorageConfig) port.UserAccessServiceAdapter {
 	adapter := NewMemoryUserAdapter()
-	if config.Storage.URL != "" {
-		adapter = NewMongoUserAdapter(config.Storage.URL)
-	}
 
 	return adapter
 }
