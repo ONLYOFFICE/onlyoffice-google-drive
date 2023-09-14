@@ -1,8 +1,8 @@
 {
     "errorMain": "申し訳ありませんが、このドキュメントを開くことができません",
     "errorSubtext": "もう一度お試しください",
-    "errorPermissionsMain": "Sorry, you do not have access rights to the file",
-    "errorPermissionsSubtext": "Please contact the owner of the file",
+    "errorPermissionsMain": "申し訳ありませんが、このファイルへのアクセス権が十分ではありません",
+    "errorPermissionsSubtext": "このファイルの所有者までご連絡ください",
     "reloadButton": "再起動",
     "cancelButton": "キャンセル",
     "openButton": "開く",
