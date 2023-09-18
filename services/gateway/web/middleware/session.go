@@ -45,6 +45,8 @@ import (
 
 var (
 	ErrEmptyResponse = errors.New("got a nil response")
+
+	CreateAction = "create"
 )
 
 type SessionMiddleware struct {
@@ -217,7 +219,13 @@ func (m SessionMiddleware) Protect(next http.Handler) http.Handler {
 				return
 			}
 
-			m.logger.Debugf("setting an empty file")
+			if state.Action == CreateAction {
+				m.logger.Debugf("setting an empty file for create action")
+				fileChan <- drive.File{}
+				return
+			}
+
+			m.logger.Error("gdrive state has no file id")
 			errChan <- ErrEmptyResponse
 		}()
 
