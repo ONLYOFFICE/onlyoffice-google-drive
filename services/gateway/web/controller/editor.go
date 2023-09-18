@@ -113,7 +113,7 @@ func (c EditorController) BuildEditorPage() http.HandlerFunc {
 
 		if err := embeddable.EditorPage.Execute(rw, map[string]interface{}{
 			"Locale":  usr.Locale,
-			"Title":   file.OriginalFilename,
+			"Title":   file.Title,
 			"apijs":   fmt.Sprintf("%s/web-apps/apps/api/documents/api.js", resp.ServerURL),
 			"config":  string(resp.ToBytes()),
 			"docType": resp.DocumentType,
