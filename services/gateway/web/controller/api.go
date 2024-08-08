@@ -310,15 +310,9 @@ func (c APIController) convertFile(ctx context.Context, state *request.DriveStat
 	}
 
 	var cresp response.ConvertResponse
-	fType, err := c.fileUtil.GetFileType(file.FileExtension)
-	if err != nil {
-		c.logger.Errorf("could not get file type: %s", err.Error())
-		return nil, err
-	}
-
 	creq := request.ConvertRequest{
 		Async:      false,
-		Filetype:   fType,
+		Filetype:   file.FileExtension,
 		Key:        c.hasher.Hash(file.Id + time.Now().String()),
 		Outputtype: "ooxml",
 		URL: fmt.Sprintf(
